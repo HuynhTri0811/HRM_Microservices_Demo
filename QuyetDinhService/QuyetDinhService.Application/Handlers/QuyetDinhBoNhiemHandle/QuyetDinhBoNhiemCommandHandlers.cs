@@ -23,12 +23,12 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
 
             // Lấy thông tin nhân viên để lấy phụ cấp cũ
             var nhanVien = await nhanSuServiceClient.GetNhanVienByIdAsync(request.MaNhanVien, token);
-            if (nhanVien == null) throw new Exception("Không tìm thấy nhân viên trong hệ thống nhân sự");
+            if (nhanVien == null) throw new NotFoundException("Không tìm thấy nhân viên trong hệ thống nhân sự", "NOT_FOUND");
             var phuCapCu = nhanVien.PhuCap;
 
             // Lấy phụ cấp từ NhanSu API cho chức vụ mới
             var chucVuMoi = await nhanSuServiceClient.GetChucVuByIdAsync(request.ChucVuMoi, token);
-            if (chucVuMoi == null) throw new Exception("Không tìm thấy chức vụ mới trong hệ thống nhân sự");
+            if (chucVuMoi == null) throw new NotFoundException("Không tìm thấy chức vụ mới trong hệ thống nhân sự", "NOT_FOUND");
             var phuCapMoi = chucVuMoi.PhuCap;
 
             var entity = QuyetDinhBoNhiem.Create(
@@ -80,7 +80,7 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
 
             // Lấy phụ cấp mới từ NhanSu API
             var chucVuMoi = await nhanSuServiceClient.GetChucVuByIdAsync(request.ChucVuMoi, token);
-            if (chucVuMoi == null) throw new Exception("Không tìm thấy chức vụ mới trong hệ thống nhân sự");
+            if (chucVuMoi == null) throw new NotFoundException("Không tìm thấy chức vụ mới trong hệ thống nhân sự","NOT_FOUND");
             var phuCapMoi = chucVuMoi.PhuCap;
 
             entity.SoQuyetDinh = request.SoQuyetDinh;
@@ -125,7 +125,7 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
         public async Task<bool> Handle(DeleteQuyetDinhBoNhiemCommand request, CancellationToken cancellationToken)
         {
             var entity = await repository.GetByIdAsync(request.Id);
-            if (entity == null) return false;
+            if (entity == null) throw new NotFoundException("Không tìm thấy quyết định bổ nhiệm trong hệ thống", "NOT_FOUND");
 
             await repository.DeleteAsync(request.Id);
             await repository.SaveChangesAsync();

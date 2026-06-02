@@ -26,18 +26,29 @@ namespace QuyetDinhService.Domain.Entities
 
         public static QuyetDinhBoNhiem Create(string soQuyetDinh, DateTime ngayQuyetDinh, string noiDung, DateTime ngayHieuLuc)
         {
+            var error = new Dictionary<string, string[]>(); 
             if (string.IsNullOrWhiteSpace(soQuyetDinh))
-                throw new Exception("Số quyết định không được để trống");
+                error.Add("SoQuyetDinh", new[] { "Số quyết định không được để trống" });
             if (string.IsNullOrWhiteSpace(noiDung))
-                throw new Exception("Nội dung không được để trống");
+                error.Add("NoiDung", new[] { "Nội dung không được để trống" });
+            if (error.Count > 0)
+                throw new BadRequestException("Dữ liệu đầu vào không hợp lệ", error, "REQUEST_VALIDATION_ERROR");
             return new QuyetDinhBoNhiem(soQuyetDinh, ngayQuyetDinh, noiDung, ngayHieuLuc);
         }
 
         public void BoNhiem(Guid maNhanVien, Guid chucVuCu, Guid chucVuMoi, decimal phuCapCu, decimal phuCapMoi, string lyDo)
         {
+            var error = new Dictionary<string, string[]>();
             if (maNhanVien == Guid.Empty)
-                throw new Exception("Mã nhân viên không được để trống");
-            
+                error.Add("MaNhanVien", new[] { "Mã nhân viên không được để trống" });
+            if (chucVuCu == Guid.Empty || chucVuMoi == Guid.Empty)
+                error.Add("ChucVu", new[] { "Mã chức vụ không được để trống" });
+            if (phuCapCu < 0)
+                error.Add("PhuCapCu", new[] { "Phụ cấp không được nhỏ hơn 0" });
+            if (phuCapMoi < 0)
+                error.Add("PhuCapMoi", new[] { "Phụ cấp không được nhỏ hơn 0" });
+            if (error.Count > 0)
+                throw new BadRequestException("Dữ liệu đầu vào không hợp lệ", error, "REQUEST_VALIDATION_ERROR");
             MaNhanVien = maNhanVien;
             ChucVuCu = chucVuCu;
             ChucVuMoi = chucVuMoi;
