@@ -6,6 +6,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Repositories
     public interface INhanVienRepository : IBaseRepository<NhanVien>
     {
         Task<bool> IsEmailUniqueAsync(string email);
+        Task<bool> IsEmployeeCodeUniqueAsync(string employeeCode);
     }
 
 }

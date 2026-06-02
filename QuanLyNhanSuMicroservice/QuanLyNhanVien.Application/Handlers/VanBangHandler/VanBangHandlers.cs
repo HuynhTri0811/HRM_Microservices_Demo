@@ -41,7 +41,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.VanBangHa
         public async Task<VanBangDto> Handle(CreateVanBangDto request, CancellationToken cancellationToken)
         {
             var nhanVien = await nhanVienRepository.GetByIdAsync(request.NhanVienID);
-            if (nhanVien == null) throw new Exception("Nhân viên không tồn tại");
+            if (nhanVien == null) throw new NotFoundException("Nhân viên không tồn tại","NOT_FOUND");
 
             var entity = VanBang.Create(request.TenVanBang, request.LoaiVanBang, request.NgayCap, request.NoiCap, nhanVien);
             await repository.AddAsync(entity);
@@ -57,7 +57,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.VanBangHa
         public async Task<VanBangDto> Handle(UpdateVanBangDTO request, CancellationToken cancellationToken)
         {
             var entity = await repository.GetByIdAsync(request.Id);
-            if (entity == null) throw new Exception("Không tìm thấy văn bằng");
+            if (entity == null) throw new NotFoundException("Không tìm thấy văn bằng","NOT_FOUND");
 
             entity.UpdateVanBang(request.TenVanBang, request.LoaiVanBang, request.NgayCap, request.NoiCap);
 

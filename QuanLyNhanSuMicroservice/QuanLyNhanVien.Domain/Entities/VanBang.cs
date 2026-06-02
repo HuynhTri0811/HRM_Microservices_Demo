@@ -1,4 +1,5 @@
 using QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities.Base;
+using QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Exceptions;
 
 namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
 {
@@ -30,11 +31,11 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
         internal static VanBang Create(string tenVanBang, string loaiVanBang, DateTime ngayCap, string noiCap, NhanVien nhanVienID)
         {
             if (string.IsNullOrEmpty(tenVanBang))
-                throw new Exception("Tên văn bằng không được để trống");
+                throw new BadRequestException("Tên văn bằng không được để trống","REQUEST_VALIDATION_ERROR");
             if (string.IsNullOrEmpty(loaiVanBang))
-                throw new Exception("Loại văn bằng không được để trống");
+                throw new BadRequestException("Loại văn bằng không được để trống","REQUEST_VALIDATION_ERROR");
             if (nhanVienID == null)
-                throw new Exception("Nhân viên không được để trống");
+                throw new BadRequestException("Nhân viên không được để trống","REQUEST_VALIDATION_ERROR");
 
             return new VanBang(tenVanBang, loaiVanBang, ngayCap, noiCap, nhanVienID);
         }
@@ -42,9 +43,9 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
         public void UpdateVanBang(string tenVanBang, string loaiVanBang, DateTime ngayCap, string noiCap)
         {
             if (string.IsNullOrEmpty(tenVanBang))
-                throw new Exception("Tên văn bằng không được để trống");
+                throw new BadRequestException("Tên văn bằng không được để trống","REQUEST_VALIDATION_ERROR");
             if (string.IsNullOrEmpty(loaiVanBang))
-                throw new Exception("Loại văn bằng không được để trống");
+                throw new BadRequestException("Loại văn bằng không được để trống","REQUEST_VALIDATION_ERROR");
 
 
             TenVanBang = tenVanBang;

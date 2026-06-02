@@ -1,4 +1,5 @@
 using QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities.Base;
+using QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Exceptions;
 
 namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
 {
@@ -24,18 +25,18 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
         public static ChucVu Create(string maChucVu, string tenChucVu, decimal phuCap)
         {
             if (string.IsNullOrWhiteSpace(maChucVu) || string.IsNullOrWhiteSpace(tenChucVu))
-                throw new Exception("Mã quản lý và tên chức vụ không được để trống");
+                throw new BadRequestException("Mã quản lý và tên chức vụ không được để trống","REQUEST_VALIDATION_ERROR");
             if (phuCap < 0)
-                throw new Exception("Tiền thưởng chức vụ không được < 0");
+                throw new BadRequestException("Tiền thưởng chức vụ không được < 0","INVALID_MONEY");    
             return new ChucVu(maChucVu, tenChucVu, phuCap);
         }
 
-        public  void Update(string maChucVu, string tenChucVu)
+        public void Update(string maChucVu, string tenChucVu)
         {
             if (string.IsNullOrWhiteSpace(maChucVu))
-                throw new Exception("Mã quản lý không được để trống");
+                throw new BadRequestException("Mã quản lý không được để trống","REQUEST_VALIDATION_ERROR");
             if(string .IsNullOrWhiteSpace(tenChucVu))
-                throw new Exception("Tên chức vụ không được để trống");
+                throw new BadRequestException("Tên chức vụ không được để trống","REQUEST_VALIDATION_ERROR");
 
             MaChucVu = maChucVu;
             TenChucVu = tenChucVu;
@@ -44,7 +45,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
         public void SetPhuCap(decimal phuCap)
         {
             if (phuCap < 0)
-                throw new Exception("Tiền thưởng chức vụ không được < 0");
+                throw new BadRequestException("Tiền thưởng chức vụ không được < 0","INVALID_MONEY");
             PhuCap = phuCap;
         }
 

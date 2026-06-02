@@ -67,7 +67,8 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
     public class UpdateQuyetDinhBoNhiemCommandHandler(
         IQuyetDinhBoNhiemRepository repository,
         INhanSuServiceClient nhanSuServiceClient,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IPublishEndpoint publishEndpoint)
         : IRequestHandler<UpdateQuyetDinhBoNhiemCommand, bool>
     {
         public async Task<bool> Handle(UpdateQuyetDinhBoNhiemCommand request, CancellationToken cancellationToken)
@@ -94,7 +95,21 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
             await repository.UpdateAsync(entity, request.UpdatedAt);
             await repository.SaveChangesAsync();
 
-            await nhanSuServiceClient.UpdateBoNhiemAsync(entity.MaNhanVien, request.ChucVuMoi, phuCapMoi, token);
+            // Comment out to use MassTransit Event-Driven / Outbox Pattern
+            // await nhanSuServiceClient.UpdateBoNhiemAsync(entity.MaNhanVien, request.ChucVuMoi, phuCapMoi, token);
+
+            // Publish integration event to RabbitMQ
+            await publishEndpoint.Publish(new QuyetDinhBoNhiemUpdatedEvent
+            {
+                Id = entity.Id,
+                SoQuyetDinh = entity.SoQuyetDinh ?? string.Empty,
+                NgayQuyetDinh = entity.NgayQuyetDinh,
+                MaNhanVien = entity.MaNhanVien,
+                ChucVuCu = entity.ChucVuCu,
+                ChucVuMoi = entity.ChucVuMoi,
+                PhuCapCu = entity.PhuCapCu,
+                PhuCapMoi = entity.PhuCapMoi
+            }, cancellationToken);
 
             return true;
         }

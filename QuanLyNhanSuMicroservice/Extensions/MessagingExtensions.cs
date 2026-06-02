@@ -14,6 +14,7 @@ namespace QuanLyNhanSuMicroservice.Extensions
             {
                 x.AddConsumer<QuyetDinhBoNhiemCreatedConsumer>();
                 x.AddConsumer<QuyetDinhBoNhiemDeletedConsumer>();
+                x.AddConsumer<QuyetDinhBoNhiemUpdatedConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -31,6 +32,11 @@ namespace QuanLyNhanSuMicroservice.Extensions
                     cfg.ReceiveEndpoint("nhansu-quyetdinh-bonhiem-deleted", e =>
                     {
                         e.ConfigureConsumer<QuyetDinhBoNhiemDeletedConsumer>(context);
+                    });
+
+                    cfg.ReceiveEndpoint("nhansu-quyetdinh-bonhiem-updated", e =>
+                    {
+                        e.ConfigureConsumer<QuyetDinhBoNhiemUpdatedConsumer>(context);
                     });
                 });
             });

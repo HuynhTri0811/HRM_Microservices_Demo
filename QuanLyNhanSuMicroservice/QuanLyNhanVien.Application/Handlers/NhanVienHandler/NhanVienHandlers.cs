@@ -64,24 +64,30 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
     {
         public async Task<Guid> Handle(CreateNhanVienDto request, CancellationToken cancellationToken)
         {
+            // Kiểm tra mã nhân viên có trong hệ thống không 
+            if (!await repository.IsEmployeeCodeUniqueAsync(request.MaNhanVien))
+            {
+                throw new IsExistException("Mã nhân viên đã tồn tại trong hệ thống");
+            }
+            
             // Kiểm tra email duy nhất
             if (!await repository.IsEmailUniqueAsync(request.Email))
             {
-                throw new Exception("Email đã tồn tại trong hệ thống");
+                throw new IsExistException("Email đã tồn tại trong hệ thống");
             }
 
             // Kiểm tra Phòng ban tồn tại
             var phongBan = await phongBanRepository.GetByIdAsync(request.PhongBanID);
             if (phongBan == null)
             {
-                throw new Exception("Phòng ban không tồn tại");
+                throw new NotFoundException("Phòng ban không tồn tại","NOT_FOUND");
             }
 
             // Kiểm tra Chức vụ tồn tại
             var chucVu = await chucVuRepository.GetByIdAsync(request.ChucVuID);
             if (chucVu == null)
             {
-                throw new Exception("Chức vụ không tồn tại");
+                throw new NotFoundException("Chức vụ không tồn tại","NOT_FOUND");
             }
 
             var employee = NhanVien.Create(
@@ -126,17 +132,21 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
             var employee = await repository.GetByIdAsync(request.Id);
             if (employee == null)
             {
-                throw new Exception("Không tìm thấy nhân viên");
+                throw new NotFoundException("Không tìm thấy nhân viên","NOT_FOUND");
+            }
+            if (employee.Email != request.Email && !await repository.IsEmailUniqueAsync(request.Email))
+            {
+                throw new IsExistException("Email đã tồn tại trong hệ thống");
             }
             var phongBan = await phongBanRepository.GetByIdAsync(request.PhongBanID);
             if (phongBan == null)
             {
-                throw new Exception("Phòng ban không tồn tại");
+                throw new NotFoundException("Phòng ban không tồn tại","NOT_FOUND");
             }
             var chucVu = await chucVuRepository.GetByIdAsync(request.ChucVuID);
             if (chucVu == null)
             {
-                throw new Exception("Chức vụ không tồn tại");
+                throw new NotFoundException("Chức vụ không tồn tại","NOT_FOUND");
             }
 
             employee.UpdateInfo(request.TenNhanVien, request.NgaySinh, request.GioiTinh, request.Email, phongBan);
@@ -155,7 +165,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
             var employee = await repository.GetByIdAsync(request.Id);
             if (employee == null)
             {
-                throw new Exception("Không tìm thấy nhân viên");
+                throw new NotFoundException("Không tìm thấy nhân viên","NOT_FOUND");
             }
 
             await repository.DeleteAsync(employee.Id);

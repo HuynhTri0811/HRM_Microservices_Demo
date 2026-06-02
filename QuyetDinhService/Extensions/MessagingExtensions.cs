@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using QuyetDinhService.QuyetDinhService.Infrastructure.Data;
 
 namespace QuyetDinhService.Extensions
 {
@@ -11,6 +12,12 @@ namespace QuyetDinhService.Extensions
         {
             builder.Services.AddMassTransit(x =>
             {
+                x.AddEntityFrameworkOutbox<QuyetDinhDbContext>(o =>
+                {
+                    o.UsePostgres();
+                    o.UseBusOutbox();
+                });
+
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>

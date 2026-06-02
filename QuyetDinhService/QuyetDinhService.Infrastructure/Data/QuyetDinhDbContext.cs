@@ -4,6 +4,7 @@ using QuyetDinhService.Domain.Entities.Interface;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http;
 using QuyetDinhService.Common;
+using MassTransit;
 
 namespace QuyetDinhService.QuyetDinhService.Infrastructure.Data
 {
@@ -27,6 +28,12 @@ namespace QuyetDinhService.QuyetDinhService.Infrastructure.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.AddInboxStateEntity();
+            modelBuilder.AddOutboxMessageEntity();
+            modelBuilder.AddOutboxStateEntity();
+
             // Tự động lọc các bản ghi đã xóa cho toàn bộ các bảng có dùng ISoftDelete
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {

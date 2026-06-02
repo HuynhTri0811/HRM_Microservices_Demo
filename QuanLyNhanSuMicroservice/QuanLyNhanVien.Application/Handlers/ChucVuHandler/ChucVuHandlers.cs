@@ -43,7 +43,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.ChucVuHan
             var chucVu = await repository.GetByIdAsync(request.Id);
             if (chucVu == null)
             {
-                throw new Exception("Không tìm thấy chức vụ");
+                throw new NotFoundException("Không tìm thấy chức vụ", "NOT_FOUND");
             }
             chucVu.Update(request.MaChucVu, request.TenChucVu);
             chucVu.SetPhuCap(request.PhuCap);
@@ -61,7 +61,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.ChucVuHan
             var chucVu = await repository.GetByIdAsync(request.Id);
             if (chucVu == null)
             {
-                throw new Exception("Không tìm thấy chức vụ");
+                throw new NotFoundException("Không tìm thấy chức vụ", "NOT_FOUND");
             }
 
             await repository.DeleteAsync(chucVu.Id);

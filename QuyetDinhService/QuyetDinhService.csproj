@@ -28,6 +28,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
     <PackageReference Include="Serilog.Sinks.MongoDB" Version="7.2.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.2.5" />
   </ItemGroup>
 
   <ItemGroup>

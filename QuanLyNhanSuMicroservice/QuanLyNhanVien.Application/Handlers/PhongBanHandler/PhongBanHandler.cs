@@ -39,7 +39,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.PhongBanH
             var phongBan = await repository.GetByIdAsync(request.Id);
             if (phongBan == null)
             {
-                throw new Exception("Không tìm thấy phòng ban");
+                throw new NotFoundException("Không tìm thấy phòng ban","NOT_FOUND");
             }
             await repository.DeleteAsync(phongBan.Id);
             await repository.SaveChangesAsync();
@@ -54,7 +54,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.PhongBanH
             var phongBan = await repository.GetByIdAsync(request.Id);
             if (phongBan == null)
             {
-                throw new Exception("Không tìm thấy phòng ban");
+                throw new NotFoundException("Không tìm thấy phòng ban","NOT_FOUND");
             }
             phongBan.CapNhat(request.MaPhongBan, request.TenPhongBan);
 

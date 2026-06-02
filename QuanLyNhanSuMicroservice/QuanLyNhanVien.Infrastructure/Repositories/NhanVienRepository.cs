@@ -55,5 +55,10 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Infrastructure.Repositories
         {
             return !await context.NhanViens.AnyAsync(x => x.Email == email);
         }
+
+        public async Task<bool> IsEmployeeCodeUniqueAsync(string employeeCode)
+        {
+            return !await context.NhanViens.AnyAsync(x => x.MaNhanVien == employeeCode);
+        }
     }
 }
