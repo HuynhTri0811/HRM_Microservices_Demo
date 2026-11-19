@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/ApiGateway.Tests/ApiGateway.Tests.csproj" />
+    <Project Path="tests/ChamCongService.Tests/ChamCongService.Tests.csproj" />
+    <Project Path="tests/QuanLyNhanSu.Tests/QuanLyNhanSu.Tests.csproj" />
+    <Project Path="tests/QuyetDinhService.Tests/QuyetDinhService.Tests.csproj" />
+    <Project Path="tests/TinhLuongService.Tests/TinhLuongService.Tests.csproj" />
+  </Folder>
   <Project Path="ApiGateway/ApiGateway.csproj" />
   <Project Path="ChamCongService/ChamCongService.csproj" />
   <Project Path="QuanLyNhanSuMicroservice/QuanLyNhanSuMicroservice.csproj" />
