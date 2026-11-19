@@ -44,6 +44,56 @@ namespace ChamCongService.Migrations
                     b.ToTable("AttendanceRecords");
                 });
 
+            modelBuilder.Entity("ChamCongService.Domain.Entity.BangChamCongTheoThang", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DenNgay")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsChot")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Nam")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Thang")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TuNgay")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BangChamCongTheoThangs");
+                });
+
             modelBuilder.Entity("ChamCongService.Domain.Entity.LoaiChamCong", b =>
                 {
                     b.Property<Guid>("Id")
@@ -81,6 +131,7 @@ namespace ChamCongService.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UpdatedBy")
@@ -133,6 +184,7 @@ namespace ChamCongService.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UpdatedBy")
