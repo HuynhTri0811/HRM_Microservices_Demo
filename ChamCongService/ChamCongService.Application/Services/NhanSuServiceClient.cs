@@ -1,17 +1,20 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
 using ChamCongService.Application.Services.DTO;
+using Grpc.Core;
+using HRM.Contracts.NhanSu;
 
 namespace ChamCongService.Application.Services
 {
+    /// <summary>
+    /// Gọi sang NhanSu service qua gRPC (Protos/nhansu.proto).
+    /// </summary>
     public class NhanSuServiceClient : INhanSuServiceClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly NhanSuGrpc.NhanSuGrpcClient _grpcClient;
         private readonly ILogger<NhanSuServiceClient> _logger;
 
-        public NhanSuServiceClient(HttpClient httpClient, ILogger<NhanSuServiceClient> logger)
+        public NhanSuServiceClient(NhanSuGrpc.NhanSuGrpcClient grpcClient, ILogger<NhanSuServiceClient> logger)
         {
-            _httpClient = httpClient;
+            _grpcClient = grpcClient;
             _logger = logger;
         }
 
@@ -19,42 +22,36 @@ namespace ChamCongService.Application.Services
         {
             try
             {
-                var requestUrl = $"/api/NhanVien/{nhanVienId}";
-                var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                var reply = await _grpcClient.GetNhanVienByIdAsync(
+                    new GetNhanVienByIdRequest { Id = nhanVienId.ToString() },
+                    BuildHeaders(token));
 
-                if (!string.IsNullOrEmpty(token))
-                {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    return JsonSerializer.Deserialize<NhanVienServiceClientDto>(content, jsonOptions);
-                }
-
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    return null;
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to get employee from NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
-                return null;
+                return new NhanVienServiceClientDto(
+                    Guid.Parse(reply.Id),
+                    reply.MaNhanVien,
+                    reply.TenNhanVien,
+                    reply.Email);
             }
-            catch (Exception ex)
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
             {
-                _logger.LogError(ex, "Exception while getting employee from NhanSu API");
                 return null;
             }
+            catch (RpcException ex)
+            {
+                _logger.LogError(ex, "gRPC GetNhanVienById tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
+                return null;
+            }
+        }
+
+        private static Metadata BuildHeaders(string token)
+        {
+            var headers = new Metadata();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var actualToken = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? token[7..] : token;
+                headers.Add("Authorization", $"Bearer {actualToken}");
+            }
+            return headers;
         }
     }
 }

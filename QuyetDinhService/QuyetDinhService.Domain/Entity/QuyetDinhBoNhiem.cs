@@ -1,3 +1,4 @@
+using QuyetDinhService.Domain.Exceptions;
 
 namespace QuyetDinhService.Domain.Entities
 {
