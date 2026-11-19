@@ -6,6 +6,7 @@ using QuyetDinhService.Domain.Repositories;
 using QuyetDinhService.QuyetDinhService.Domain.Repositories;
 using QuyetDinhService.QuyetDinhService.Application.Services;
 using MassTransit;
+using QuyetDinhService.Application.Exceptions;
 using QuyetDinhService.QuyetDinhService.Application.Events;
 
 namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhiemHandle
