@@ -1,6 +1,6 @@
 # HRM Microservices Demo
 
-Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microservices** trên **.NET 8**, gồm 4 service nghiệp vụ đứng sau một **API Gateway (YARP)**, giao tiếp với nhau qua **HTTP** và **RabbitMQ (MassTransit)**, kèm đầy đủ stack quan sát hệ thống (logging, metrics, tracing).
+Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microservices** trên **.NET 8**, gồm 4 service nghiệp vụ đứng sau một **API Gateway (YARP)**, giao tiếp với nhau qua **gRPC** và **RabbitMQ (MassTransit)**, kèm đầy đủ stack quan sát hệ thống (logging, metrics, tracing).
 
 ---
 
@@ -30,9 +30,10 @@ Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microse
          ▼              ▼              ▼              ▼               │
    ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐         │
    │  NhanSu   │  │ TinhLuong │  │ ChamCong  │  │ QuyetDinh │         │
-   │   :8081   │  │   :8082   │  │   :8083   │  │   :8084   │         │
+   │:8081 REST │  │   :8082   │  │   :8083   │  │   :8084   │         │
+   │:9081 gRPC │  │           │  │           │  │           │         │
    └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘         │
-         │   ◄── HTTP ──┴──────────────┴──────────────┘               │
+         │   ◄── gRPC ──┴──────────────┴──────────────┘               │
          │                                            │               │
          │ ◄────────── RabbitMQ (MassTransit) ────────┘ (Outbox)      │
          ▼                                                            │
@@ -40,7 +41,7 @@ Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microse
 ```
 
 - **Database per service**: mỗi service có database PostgreSQL riêng (`DbNhanSu`, `DbTinhLuong`, `DbChamCong`, `DbQuyetDinh`).
-- **NhanSu** là service trung tâm — các service khác gọi HTTP sang để lấy thông tin nhân viên / chức vụ.
+- **NhanSu** là service trung tâm — các service khác gọi **gRPC** sang (port 9081) để lấy/cập nhật thông tin nhân viên, chức vụ. Không còn service nào gọi REST nội bộ.
 - **QuyetDinh** phát event bổ nhiệm qua RabbitMQ (dùng **Transactional Outbox**), **NhanSu** consume để cập nhật chức vụ & phụ cấp của nhân viên.
 
 ## Danh sách service
@@ -48,7 +49,7 @@ Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microse
 | Service | Thư mục | Port | Database | Chức năng |
 |---|---|---|---|---|
 | **API Gateway** | `ApiGateway/` | 8080 | — | Reverse proxy (YARP), Polly resilience, gộp Swagger |
-| **Nhân Sự** | `QuanLyNhanSuMicroservice/` | 8081 | `DbNhanSu` | Tài khoản/đăng nhập, Nhân viên, Phòng ban, Chức vụ, Văn bằng |
+| **Nhân Sự** | `QuanLyNhanSuMicroservice/` | 8081 (REST), 9081 (gRPC) | `DbNhanSu` | Tài khoản/đăng nhập, Nhân viên, Phòng ban, Chức vụ, Văn bằng; gRPC server cho các service khác |
 | **Tính Lương** | `TinhLuongService/` | 8082 | `DbTinhLuong` | Kỳ tính lương: khoá/mở kỳ, tính lương |
 | **Chấm Công** | `ChamCongService/` | 8083 | `DbChamCong` | Loại chấm công, Phiếu đăng ký nghỉ, Bảng chấm công tháng (chốt/mở chốt) |
 | **Quyết Định** | `QuyetDinhService/` | 8084 | `DbQuyetDinh` | Quyết định bổ nhiệm, Quyết định nâng lương |
@@ -69,6 +70,7 @@ Hạ tầng đi kèm (trong `docker-compose.yml`):
 - **.NET 8 / ASP.NET Core Web API**
 - **Clean Architecture + CQRS** với **MediatR** (tách lớp `API` / `Application` / `Domain` / `Infrastructure` trong từng service)
 - **Entity Framework Core 8 + Npgsql** (PostgreSQL), soft delete qua `SoftInterceptor`, auto-migrate khi khởi động
+- **gRPC** (Grpc.AspNetCore / Grpc.Net.ClientFactory, contract chung `Protos/nhansu.proto`)
 - **MassTransit 8 + RabbitMQ**, **EF Core Outbox** (QuyetDinhService)
 - **YARP** reverse proxy + **Polly** (retry, circuit breaker, timeout)
 - **JWT Bearer** authentication, mật khẩu hash bằng **BCrypt**
@@ -81,9 +83,11 @@ Hạ tầng đi kèm (trong `docker-compose.yml`):
 
 ```
 HRM_Microservices_Demo/
+├── Protos/
+│   └── nhansu.proto                # Contract gRPC của NhanSu (server + client dùng chung)
 ├── ApiGateway/                     # YARP gateway
 ├── QuanLyNhanSuMicroservice/       # Service Nhân sự
-│   ├── QuanLyNhanVien.API/         #   Controllers, Filters
+│   ├── QuanLyNhanVien.API/         #   Controllers, Filters, Grpc (NhanSuGrpcService)
 │   ├── QuanLyNhanVien.Application/ #   Commands/DTO, Queries, Handlers, Consumers, Events, Exception
 │   ├── QuanLyNhanVien.Domain/      #   Entities, Repository interfaces, Domain exceptions
 │   ├── QuanLyNhanVien.Infrastructure/ # DbContext, Repositories
@@ -127,13 +131,15 @@ Mỗi service tự chạy migration khi khởi động, nên không cần `dotne
 2. File `appsettings.json` đang trỏ tới hostname trong Docker (`postgres`, `rabbitmq`, `mongodb`, `nhansu-api`). Khi chạy ngoài Docker cần override, ví dụ:
    - `ConnectionStrings:DefaultConnection` → `Host=localhost;Port=5433;...`
    - `RabbitMQ:Host` → `localhost`
-   - `NhanSuApiUrl` → URL thực tế của service NhanSu
+   - `NhanSuGrpcUrl` (ChamCong, QuyetDinh, TinhLuong) → địa chỉ gRPC của NhanSu, ví dụ `http://localhost:9081`
    - `Serilog:WriteTo:1:Args:databaseUrl` → `mongodb://mongo:mongo@localhost:27017/HrmLogsDb?authSource=admin`
 3. Chạy từng service:
    ```bash
    dotnet run --project QuanLyNhanSuMicroservice
    ```
-   Lưu ý: port trong `Properties/launchSettings.json` khác với port Docker (8081–8084). Nếu chạy Gateway local thì cập nhật lại `ReverseProxy:Clusters:*:Destinations:destination1:Address` trong `ApiGateway/appsettings.json` cho khớp.
+   Lưu ý:
+   - NhanSu luôn lắng nghe theo `Kestrel:Endpoints` trong `appsettings.json` (8081 REST/HTTP1, 9081 gRPC/HTTP2), bỏ qua `applicationUrl` trong `launchSettings.json`.
+   - Các service còn lại dùng port trong `Properties/launchSettings.json` (khác port Docker 8082–8084). Nếu chạy Gateway local thì cập nhật lại `ReverseProxy:Clusters:*:Destinations:destination1:Address` trong `ApiGateway/appsettings.json` cho khớp.
 
 ## Xác thực (JWT)
 
@@ -151,7 +157,7 @@ Tất cả controller đều có `[Authorize]`, trừ `AuthController`.
    ```
 3. Gửi kèm header `Authorization: Bearer <token>` cho các request khác.
 
-Các service dùng chung cấu hình `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` nên token do NhanSu cấp hợp lệ ở mọi service. Token cũng được forward khi một service gọi HTTP sang NhanSu.
+Các service dùng chung cấu hình `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` nên token do NhanSu cấp hợp lệ ở mọi service. Khi một service gọi gRPC sang NhanSu, token của request gốc được forward qua metadata `Authorization` (gRPC service của NhanSu cũng có `[Authorize]`).
 
 > ⚠️ `Jwt:Key` và các mật khẩu trong repo chỉ dùng cho môi trường demo/dev.
 
@@ -220,16 +226,25 @@ Chi tiết request/response xem trên Swagger: http://localhost:8080/swagger.
 
 ## Giao tiếp giữa các service
 
-### Đồng bộ — HTTP (`INhanSuServiceClient`)
+### Đồng bộ — gRPC (`INhanSuServiceClient`)
 
-Các service gọi sang NhanSu qua `NhanSuApiUrl`, forward header `Authorization` của request gốc:
+Contract nằm ở [`Protos/nhansu.proto`](Protos/nhansu.proto) (service `nhansu.v1.NhanSuGrpc`). Mỗi project tự sinh code bằng `Grpc.Tools` từ cùng file này: NhanSu sinh **server** (`QuanLyNhanVien.API/Grpc/NhanSuGrpcService.cs`), các service còn lại sinh **client** và bọc trong `NhanSuServiceClient` (giữ nguyên interface `INhanSuServiceClient`, nên handler không phụ thuộc vào transport).
 
-| Service gọi | Endpoint NhanSu | Mục đích |
+| Service gọi | RPC | Mục đích |
 |---|---|---|
-| ChamCong | `GET /api/NhanVien/{id}` | Kiểm tra nhân viên khi tạo phiếu nghỉ |
-| TinhLuong | `GET /api/NhanVien` | Lấy danh sách nhân viên để tính lương |
-| QuyetDinh | `GET /api/NhanVien/{id}`, `GET /api/ChucVu/{id}` | Lấy phụ cấp cũ/mới khi bổ nhiệm |
-| QuyetDinh | `PATCH /api/NhanVien/{id}/update-luong` | Cập nhật lương khi tạo/sửa/xoá quyết định nâng lương |
+| ChamCong | `GetNhanVienById` | Kiểm tra nhân viên khi tạo phiếu nghỉ |
+| TinhLuong | `GetAllNhanVien` | Lấy danh sách nhân viên để tính lương |
+| QuyetDinh | `GetNhanVienById`, `GetChucVuById` | Lấy phụ cấp cũ/mới khi bổ nhiệm; hiển thị thông tin nhân viên trong danh sách quyết định |
+| QuyetDinh | `UpdateLuong` | Cập nhật lương khi tạo/sửa/xoá quyết định nâng lương |
+| QuyetDinh | `UpdateBoNhiem` | Cập nhật chức vụ + phụ cấp (hiện luồng bổ nhiệm dùng RabbitMQ, RPC này để dự phòng) |
+
+Chi tiết kỹ thuật:
+- NhanSu mở 2 endpoint Kestrel: **8081** (HTTP/1.1 – REST, Swagger, `/metrics`, Gateway) và **9081** (HTTP/2 cleartext – gRPC). Port 9081 chỉ dùng trong mạng nội bộ Docker, không publish ra host.
+- Client đăng ký bằng `AddGrpcClient<NhanSuGrpc.NhanSuGrpcClient>` với địa chỉ `NhanSuGrpcUrl` (mặc định `http://nhansu-api:9081`).
+- `Guid` và `decimal` được truyền dạng `string` (InvariantCulture) để không mất độ chính xác tiền lương; ngày dùng `google.protobuf.Timestamp`.
+- Lỗi: `NOT_FOUND` → client trả `null` (handler ném `NotFoundException` → HTTP 404); `INVALID_ARGUMENT` khi Id/số không hợp lệ; lỗi nghiệp vụ khi cập nhật → `FAILED_PRECONDITION`.
+
+Thêm RPC mới: sửa `Protos/nhansu.proto` → implement trong `NhanSuGrpcService` → gọi từ `NhanSuServiceClient` của service cần dùng. Code được sinh lại tự động khi build.
 
 ### Bất đồng bộ — RabbitMQ (MassTransit)
 
