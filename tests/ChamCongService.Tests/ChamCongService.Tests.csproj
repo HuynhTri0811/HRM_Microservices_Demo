@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ChamCongService\ChamCongService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\GrpcTestCalls.cs" Link="Shared\GrpcTestCalls.cs" />
+  </ItemGroup>
+
+</Project>

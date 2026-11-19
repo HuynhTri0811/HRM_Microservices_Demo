@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\TinhLuongService\TinhLuongService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SQLite in-memory: chạy DbContext/repository thật để kiểm tra hành vi EF (tracking, concurrency) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\GrpcTestCalls.cs" Link="Shared\GrpcTestCalls.cs" />
+  </ItemGroup>
+
+</Project>

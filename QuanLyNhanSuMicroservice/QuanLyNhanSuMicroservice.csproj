@@ -44,4 +44,9 @@
     <Folder Include="QuanLyNhanVien.Application\Mapping\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Cho phép project test dùng các factory internal (vd TinhTrangNhanVien.Create) -->
+    <InternalsVisibleTo Include="QuanLyNhanSu.Tests" />
+  </ItemGroup>
+
 </Project>
