@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HRM Test Console</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --text: #1b1f24; --muted: #5f6b7a;
+    --border: #dde2e8; --accent: #2f6fde; --accent-text: #ffffff;
+    --ok: #1a7f4b; --ok-bg: #e5f5ec; --err: #c0362c; --err-bg: #fdeceb; --warn: #9a6700; --warn-bg: #fff6dc;
+    --run: #2f6fde; --run-bg: #e8f0fd; --code: #f3f4f6;
+    --tag-rest: #5f6b7a; --tag-grpc: #7a3fc4; --tag-mq: #b35900;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --panel: #191d23; --panel-2: #20252c; --text: #e6e9ee; --muted: #98a2b0;
+      --border: #2d333c; --accent: #5b8ff0; --accent-text: #0d1117;
+      --ok: #4cc38a; --ok-bg: #15301f; --err: #ff7b72; --err-bg: #3a1a18; --warn: #e3b341; --warn-bg: #33290f;
+      --run: #79a6ff; --run-bg: #18264a; --code: #0f1216;
+      --tag-rest: #98a2b0; --tag-grpc: #c29bff; --tag-mq: #f0a04b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .grow { flex: 1 1 auto; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input, select, textarea { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+  textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  button { border: 1px solid var(--border); background: var(--panel-2); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  button.danger { color: var(--err); }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+  .status.ok { background: var(--ok-bg); color: var(--ok); }
+  .status.err { background: var(--err-bg); color: var(--err); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  nav.tabs button { border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; padding: 8px 12px; color: var(--muted); }
+  nav.tabs button.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin: 0 0 4px; }
+  .panel h3 { font-size: 14px; margin: 16px 0 8px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+  .resource { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+  @media (max-width: 900px) { .resource { grid-template-columns: 1fr; } }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.actions { white-space: nowrap; }
+  td .id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+  .empty { padding: 16px; color: var(--muted); text-align: center; }
+  form.create { display: grid; gap: 8px; align-content: start; }
+  form.create label { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
+  form.create label input, form.create label select { color: var(--text); font-size: 14px; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .step { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
+  .step .icon { font-weight: 700; text-align: center; }
+  .step.pending .icon { color: var(--muted); }
+  .step.running { background: var(--run-bg); } .step.running .icon { color: var(--run); }
+  .step.ok .icon { color: var(--ok); }
+  .step.fail { background: var(--err-bg); } .step.fail .icon { color: var(--err); }
+  .step.warn { background: var(--warn-bg); } .step.warn .icon { color: var(--warn); }
+  .step.skip { opacity: .6; }
+  .step .detail { font-size: 12px; color: var(--muted); word-break: break-word; }
+  .step.fail .detail { color: var(--err); }
+  .tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.rest { color: var(--tag-rest); } .tag.grpc { color: var(--tag-grpc); } .tag.mq { color: var(--tag-mq); }
+  .summary { margin-top: 12px; font-weight: 600; }
+  .log { display: grid; gap: 6px; max-height: 480px; overflow: auto; }
+  .log details { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: var(--panel); }
+  .log summary { cursor: pointer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .log .method { font-weight: 700; font-family: ui-monospace, monospace; font-size: 12px; min-width: 52px; }
+  .log .url { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+  .log .ms { color: var(--muted); font-size: 12px; margin-left: auto; }
+  pre { background: var(--code); border-radius: 6px; padding: 8px; overflow: auto; font-size: 12px; margin: 6px 0 0; max-height: 320px; }
+  .toast { position: fixed; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0,0,0,.15); display: none; }
+  .toast.ok { border-color: var(--ok); } .toast.err { border-color: var(--err); color: var(--err); }
+  .health { display: flex; gap: 6px; flex-wrap: wrap; }
+  .hidden { display: none !important; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>HRM Test Console</h1>
+  <div class="row">
+    <label class="row" title="Địa chỉ API Gateway">Gateway <input id="baseUrl" size="22"></label>
+  </div>
+  <div class="health" id="health"></div>
+  <span class="grow"></span>
+  <div class="row" id="authBox">
+    <span class="status" id="authStatus">Chưa đăng nhập</span>
+    <input id="username" placeholder="Tên đăng nhập" autocomplete="username" size="12">
+    <input id="password" type="password" placeholder="Mật khẩu" autocomplete="current-password" size="12">
+    <button class="primary" id="btnLogin">Đăng nhập</button>
+    <button id="btnRegister" title="Tạo tài khoản role Admin rồi đăng nhập">Đăng ký</button>
+    <button id="btnLogout" class="hidden">Đăng xuất</button>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs" id="tabs"></nav>
+
+  <section data-tab="smoke">
+    <div class="panel">
+      <h2>Kịch bản kiểm tra tự động</h2>
+      <p class="hint">Tạo dữ liệu mới (có hậu tố ngẫu nhiên) bằng một tài khoản test riêng và đi qua toàn bộ luồng:
+        REST qua Gateway → gRPC sang NhanSu → event RabbitMQ. Mỗi bước ghi rõ kênh giao tiếp được kiểm tra.</p>
+      <div class="row">
+        <button class="primary" id="btnSmoke">▶ Chạy toàn bộ</button>
+        <label class="row"><input type="checkbox" id="smokeContinue" checked> Chạy tiếp khi một bước lỗi (nếu bước sau không phụ thuộc)</label>
+      </div>
+      <h3>Các bước</h3>
+      <ol class="steps" id="steps"></ol>
+      <div class="summary" id="smokeSummary"></div>
+    </div>
+  </section>
+
+  <section data-tab="nhansu" class="hidden"></section>
+  <section data-tab="quyetdinh" class="hidden"></section>
+  <section data-tab="chamcong" class="hidden"></section>
+  <section data-tab="tinhluong" class="hidden"></section>
+
+  <section data-tab="console" class="hidden">
+    <div class="panel">
+      <h2>Gọi API tự do</h2>
+      <p class="hint">Đường dẫn tính sau <code>/api/{service}</code> của Gateway, ví dụ <code>/NhanVien</code>. Token hiện tại được gửi kèm tự động.</p>
+      <div class="row">
+        <select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+        <select id="cService"><option>nhansu</option><option>quyetdinh</option><option>chamcong</option><option>tinhluong</option></select>
+        <input id="cPath" class="grow" placeholder="/NhanVien" value="/NhanVien">
+        <button class="primary" id="cSend">Gửi</button>
+      </div>
+      <h3>Body (JSON)</h3>
+      <textarea id="cBody" rows="8" placeholder='{"key": "value"}'></textarea>
+      <h3>Kết quả</h3>
+      <pre id="cResult">—</pre>
+    </div>
+  </section>
+
+  <div class="panel">
+    <div class="row"><h2 class="grow">Nhật ký request</h2><button class="small" id="btnClearLog">Xoá</button></div>
+    <p class="hint">Mới nhất ở trên. Bấm vào từng dòng để xem request/response và X-Correlation-Id (dùng để tìm log trong MongoDB / trace trong Jaeger).</p>
+    <div class="log" id="log"><div class="empty">Chưa có request nào.</div></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Storage (an toàn khi bị chặn) ----------
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* ignore */ } },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const defaultBase = location.protocol.startsWith('http') ? location.origin : 'http://localhost:8080';
+  $('baseUrl').value = store.get('hrm.base') || defaultBase;
+  $('baseUrl').addEventListener('change', () => { store.set('hrm.base', $('baseUrl').value.trim()); checkHealth(); });
+  const base = () => $('baseUrl').value.trim().replace(/\/+$/, '');
+
+  let token = store.get('hrm.token');
+  let currentUser = store.get('hrm.user');
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg, kind = 'ok') {
+    const t = $('toast');
+    t.textContent = msg; t.className = 'toast ' + kind; t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  // ---------- HTTP ----------
+  class ApiError extends Error { constructor(status, message, data) { super(message); this.status = status; this.data = data; } }
+
+  function errorMessage(data, status) {
+    if (data && typeof data === 'object') {
+      if (data.message) return data.message;
+      if (data.detail) return data.detail;
+      if (data.errors) return Object.entries(data.errors).map(([k, v]) => `${k}: ${[].concat(v).join(', ')}`).join('; ');
+      if (data.title) return data.title;
+    }
+    if (typeof data === 'string' && data) return data.slice(0, 300);
+    return `HTTP ${status}`;
+  }
+
+  async function api(method, svc, path, body, opts = {}) {
+    const url = `${base()}/api/${svc}${path}`;
+    const headers = {};
+    const auth = opts.token !== undefined ? opts.token : token;
+    if (auth) headers.Authorization = 'Bearer ' + auth;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const t0 = performance.now();
+    let res, text = '';
+    try {
+      res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
+      text = await res.text();
+    } catch (e) {
+      addLog({ method, url, status: 0, ms: performance.now() - t0, req: body, res: String(e) });
+      throw new ApiError(0, `Không kết nối được Gateway (${e.message})`);
+    }
+    let data = null;
+    if (text) { try { data = JSON.parse(text); } catch { data = text; } }
+    addLog({ method, url, status: res.status, ms: performance.now() - t0, corr: res.headers.get('X-Correlation-Id'), req: body, res: data, silent: opts.silent });
+    if (res.status === 401 && auth === token && token) setAuth(null, null);
+    if (!res.ok) throw new ApiError(res.status, errorMessage(data, res.status), data);
+    return data;
+  }
+
+  // ---------- Log ----------
+  const logEntries = [];
+  function addLog(e) {
+    logEntries.unshift(e);
+    if (logEntries.length > 150) logEntries.pop();
+    renderLog();
+  }
+  function renderLog() {
+    const el = $('log');
+    if (!logEntries.length) { el.innerHTML = '<div class="empty">Chưa có request nào.</div>'; return; }
+    el.innerHTML = logEntries.map((e) => {
+      const cls = e.status >= 200 && e.status < 300 ? 'ok' : 'err';
+      const shortUrl = e.url.replace(base(), '');
+      return `<details><summary><span class="method">${esc(e.method)}</span><span class="status ${cls}">${e.status || 'ERR'}</span>
+        <span class="url">${esc(shortUrl)}</span><span class="ms">${Math.round(e.ms)} ms</span></summary>
+        ${e.corr ? `<div class="hint" style="margin:6px 0 0">X-Correlation-Id: <code>${esc(e.corr)}</code></div>` : ''}
+        ${e.req !== undefined ? `<div class="hint" style="margin:6px 0 0">Request body</div><pre>${esc(JSON.stringify(e.req, null, 2))}</pre>` : ''}
+        <div class="hint" style="margin:6px 0 0">Response</div><pre>${esc(typeof e.res === 'string' ? e.res : JSON.stringify(e.res, null, 2) ?? '(trống)')}</pre>
+      </details>`;
+    }).join('');
+  }
+  $('btnClearLog').onclick = () => { logEntries.length = 0; renderLog(); };
+
+  // ---------- Health ----------
+  const SERVICES = [['nhansu', 'Nhân sự'], ['quyetdinh', 'Quyết định'], ['chamcong', 'Chấm công'], ['tinhluong', 'Tính lương']];
+  async function checkHealth() {
+    $('health').innerHTML = SERVICES.map(([k, n]) => `<span class="status" id="h-${k}" title="Kiểm tra qua /swagger/${k}/v1/swagger.json">${n} …</span>`).join('');
+    await Promise.all(SERVICES.map(async ([k, n]) => {
+      const el = $('h-' + k);
+      try {
+        const r = await fetch(`${base()}/swagger/${k}/v1/swagger.json`);
+        el.className = 'status ' + (r.ok ? 'ok' : 'err'); el.textContent = `${n} ${r.ok ? '●' : '✕'}`;
+      } catch { el.className = 'status err'; el.textContent = `${n} ✕`; }
+    }));
+  }
+
+  // ---------- Auth ----------
+  function setAuth(t, user) {
+    token = t; currentUser = user;
+    store.set('hrm.token', t); store.set('hrm.user', user);
+    const on = !!t;
+    $('authStatus').textContent = on ? `Đã đăng nhập: ${user}` : 'Chưa đăng nhập';
+    $('authStatus').className = 'status ' + (on ? 'ok' : '');
+    ['username', 'password', 'btnLogin', 'btnRegister'].forEach((id) => $(id).classList.toggle('hidden', on));
+    $('btnLogout').classList.toggle('hidden', !on);
+  }
+  async function login(username, password) {
+    const r = await api('POST', 'nhansu', '/Auth/login', { username, password }, { token: null });
+    return r.token;
+  }
+  $('btnLogin').onclick = async () => {
+    const u = $('username').value.trim(), p = $('password').value;
+    if (!u || !p) return toast('Nhập tên đăng nhập và mật khẩu', 'err');
+    try { setAuth(await login(u, p), u); $('password').value = ''; toast('Đăng nhập thành công'); refreshActive(); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  $('btnRegister').onclick = async () => {
+    const u = $('username').value.trim(), p = $('password').value;
+    if (!u || !p) return toast('Nhập tên đăng nhập và mật khẩu', 'err');
+    try {
+      await api('POST', 'nhansu', '/Auth/register', { username: u, password: p, role: 'Admin' }, { token: null });
+      setAuth(await login(u, p), u); $('password').value = ''; toast('Đã tạo tài khoản và đăng nhập'); refreshActive();
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  $('btnLogout').onclick = () => setAuth(null, null);
+  $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnLogin').click(); });
+
+  // ---------- Format ----------
+  const get = (o, path) => path.split('.').reduce((v, k) => (v == null ? v : v[k]), o);
+  const isoDate = /^\d{4}-\d{2}-\d{2}T/;
+  function fmt(v) {
+    if (v === null || v === undefined || v === '') return '<span class="id">—</span>';
+    if (typeof v === 'boolean') return `<span class="status ${v ? 'ok' : ''}">${v ? 'Có' : 'Không'}</span>`;
+    if (typeof v === 'number') return esc(v.toLocaleString('vi-VN', { maximumFractionDigits: 4 }));
+    if (typeof v === 'string' && isoDate.test(v)) { const d = new Date(v); return isNaN(d) ? esc(v) : esc(d.toLocaleDateString('vi-VN')); }
+    return esc(v);
+  }
+  const toIsoDate = (v) => (v ? `${v}T00:00:00Z` : null);
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const ENUMS = {
+    hinhThuc: [[0, 'Nghỉ theo giờ'], [1, 'Nghỉ theo buổi'], [2, 'Nghỉ theo ngày']],
+    loaiBuoi: [[0, 'Sáng'], [1, 'Chiều']],
+    gioiTinh: [['Nam', 'Nam'], ['Nữ', 'Nữ']],
+  };
+  const enumLabel = (name, v) => (ENUMS[name].find(([k]) => k === v) || [v, v])[1];
+
+  // ---------- Resource definitions ----------
+  // cols: [path, header, kind?]; fields: {name, label, type, ref?, enum?, optional?, fill?}
+  const RESOURCES = {
+    phongban: { svc: 'nhansu', path: '/PhongBan', title: 'Phòng ban', label: (x) => `${x.maPhongBan} – ${x.tenPhongBan}`,
+      cols: [['maPhongBan', 'Mã'], ['tenPhongBan', 'Tên']],
+      fields: [{ name: 'maPhongBan', label: 'Mã phòng ban' }, { name: 'tenPhongBan', label: 'Tên phòng ban' }],
+      actions: ['delete'] },
+    chucvu: { svc: 'nhansu', path: '/ChucVu', title: 'Chức vụ', label: (x) => `${x.maChucVu} – ${x.tenChucVu}`,
+      cols: [['maChucVu', 'Mã'], ['tenChucVu', 'Tên'], ['phuCap', 'Phụ cấp', 'num']],
+      fields: [{ name: 'maChucVu', label: 'Mã chức vụ' }, { name: 'tenChucVu', label: 'Tên chức vụ' }, { name: 'phuCap', label: 'Phụ cấp', type: 'number' }],
+      actions: ['delete'] },
+    nhanvien: { svc: 'nhansu', path: '/NhanVien', title: 'Nhân viên', label: (x) => `${x.maNhanVien} – ${x.tenNhanVien}`,
+      cols: [['maNhanVien', 'Mã'], ['tenNhanVien', 'Họ tên'], ['email', 'Email'], ['phongBan.tenPhongBan', 'Phòng ban'], ['chucVu.tenChucVu', 'Chức vụ'], ['luongCoBan', 'Lương CB', 'num'], ['phuCap', 'Phụ cấp', 'num']],
+      fields: [
+        { name: 'maNhanVien', label: 'Mã nhân viên' }, { name: 'tenNhanVien', label: 'Họ tên' },
+        { name: 'ngaySinh', label: 'Ngày sinh', type: 'date', value: '1995-01-01' }, { name: 'gioiTinh', label: 'Giới tính', enum: 'gioiTinh' },
+        { name: 'email', label: 'Email', type: 'email' },
+        { name: 'phongBanID', label: 'Phòng ban', ref: 'phongban' }, { name: 'chucVuID', label: 'Chức vụ', ref: 'chucvu' }],
+      actions: [{ label: 'Sửa lương', run: async (row) => {
+        const v = prompt(`Lương cơ bản mới cho ${row.tenNhanVien}:`, row.luongCoBan);
+        if (v == null) return false;
+        await api('PATCH', 'nhansu', `/NhanVien/${row.id}/update-luong`, { luongCoBan: Number(v) });
+        return true;
+      } }, 'delete'] },
+    vanbang: { svc: 'nhansu', path: '/VanBang', title: 'Văn bằng',
+      cols: [['tenVanBang', 'Tên'], ['loaiVanBang', 'Loại'], ['ngayCap', 'Ngày cấp'], ['noiCap', 'Nơi cấp'], ['nhanVienID', 'Nhân viên', 'nhanvien']],
+      fields: [{ name: 'tenVanBang', label: 'Tên văn bằng' }, { name: 'loaiVanBang', label: 'Loại' }, { name: 'ngayCap', label: 'Ngày cấp', type: 'date', value: '2018-06-30' },
+        { name: 'noiCap', label: 'Nơi cấp' }, { name: 'nhanVienID', label: 'Nhân viên', ref: 'nhanvien' }],
+      actions: ['delete'] },
+
+    qdnangluong: { svc: 'quyetdinh', path: '/QuyetDinhNangLuong', title: 'Quyết định nâng lương',
+      note: 'Tạo/sửa/xoá gọi gRPC UpdateLuong sang NhanSu; danh sách gọi gRPC GetNhanVienById.',
+      cols: [['soQuyetDinh', 'Số QĐ'], ['nhanVien.tenNhanVien', 'Nhân viên'], ['luongCu', 'Lương cũ', 'num'], ['luongMoi', 'Lương mới', 'num'], ['ngayHieuLuc', 'Hiệu lực']],
+      fields: [{ name: 'soQuyetDinh', label: 'Số quyết định' }, { name: 'ngayQuyetDinh', label: 'Ngày quyết định', type: 'date', value: today },
+        { name: 'noiDung', label: 'Nội dung', value: 'Nâng lương' }, { name: 'ngayHieuLuc', label: 'Ngày hiệu lực', type: 'date', value: today },
+        { name: 'ghiChu', label: 'Ghi chú', optional: true },
+        { name: 'maNhanVien', label: 'Nhân viên', ref: 'nhanvien', fill: { luongCoBanCu: 'luongCoBan' } },
+        { name: 'luongCoBanCu', label: 'Lương cơ bản cũ', type: 'number' }, { name: 'luongCoBanMoi', label: 'Lương cơ bản mới', type: 'number' }],
+      actions: ['delete'] },
+    qdbonhiem: { svc: 'quyetdinh', path: '/QuyetDinhBoNhiem', title: 'Quyết định bổ nhiệm',
+      note: 'Tạo gọi gRPC GetNhanVienById + GetChucVuById, sau đó phát event RabbitMQ để NhanSu cập nhật chức vụ.',
+      cols: [['soQuyetDinh', 'Số QĐ'], ['nhanVien.tenNhanVien', 'Nhân viên'], ['chucVuCu', 'Chức vụ cũ', 'chucvu'], ['chucVuMoi', 'Chức vụ mới', 'chucvu'], ['phuCapCu', 'PC cũ', 'num'], ['phuCapMoi', 'PC mới', 'num']],
+      fields: [{ name: 'soQuyetDinh', label: 'Số quyết định' }, { name: 'ngayQuyetDinh', label: 'Ngày quyết định', type: 'date', value: today },
+        { name: 'noiDung', label: 'Nội dung', value: 'Bổ nhiệm' }, { name: 'ngayHieuLuc', label: 'Ngày hiệu lực', type: 'date', value: today },
+        { name: 'ghiChu', label: 'Ghi chú', optional: true },
+        { name: 'maNhanVien', label: 'Nhân viên', ref: 'nhanvien', fill: { chucVuCu: 'chucVu.id' } },
+        { name: 'chucVuCu', label: 'Chức vụ cũ', ref: 'chucvu' }, { name: 'chucVuMoi', label: 'Chức vụ mới', ref: 'chucvu' },
+        { name: 'lyDo', label: 'Lý do', value: 'Thăng chức' }],
+      actions: ['delete'] },
+
+    loaichamcong: { svc: 'chamcong', path: '/LoaiChamCong', title: 'Loại chấm công', label: (x) => `${x.maLoai} – ${x.tenLoai}`,
+      cols: [['maLoai', 'Mã'], ['tenLoai', 'Tên'], ['heSo', 'Hệ số', 'num'], ['hinhThuc', 'Hình thức', 'enum:hinhThuc']],
+      fields: [{ name: 'maLoai', label: 'Mã loại' }, { name: 'tenLoai', label: 'Tên loại' }, { name: 'heSo', label: 'Hệ số', type: 'number', value: '1' },
+        { name: 'hinhThuc', label: 'Hình thức nghỉ', enum: 'hinhThuc' }],
+      actions: ['delete'] },
+    phieunghi: { svc: 'chamcong', path: '/PhieuDangKyNghi', title: 'Phiếu đăng ký nghỉ',
+      note: 'Tạo phiếu gọi gRPC GetNhanVienById sang NhanSu để kiểm tra nhân viên.',
+      cols: [['ngayNghi', 'Ngày nghỉ'], ['maNhanVien', 'Nhân viên', 'nhanvien'], ['loaiChamCongTen', 'Loại'], ['lyDo', 'Lý do'], ['tuGio', 'Từ giờ'], ['denGio', 'Đến giờ'], ['loaiBuoi', 'Buổi', 'enum:loaiBuoi']],
+      fields: [{ name: 'ngayNghi', label: 'Ngày nghỉ', type: 'date', value: today }, { name: 'lyDo', label: 'Lý do', value: 'Việc riêng' },
+        { name: 'maNhanVien', label: 'Nhân viên', ref: 'nhanvien' }, { name: 'loaiChamCongId', label: 'Loại chấm công', ref: 'loaichamcong' },
+        { name: 'tuGio', label: 'Từ giờ (nghỉ theo giờ)', type: 'time', optional: true }, { name: 'denGio', label: 'Đến giờ (nghỉ theo giờ)', type: 'time', optional: true },
+        { name: 'loaiBuoi', label: 'Buổi (nghỉ theo buổi)', enum: 'loaiBuoi', optional: true }],
+      actions: ['delete'] },
+    bangcong: { svc: 'chamcong', path: '/BangChamCongTheoThang', title: 'Bảng chấm công tháng',
+      cols: [['thang', 'Tháng'], ['nam', 'Năm'], ['tuNgay', 'Từ ngày'], ['denNgay', 'Đến ngày'], ['isChot', 'Đã chốt']],
+      fields: [{ name: 'thang', label: 'Tháng', type: 'number', value: () => new Date().getMonth() + 1 }, { name: 'nam', label: 'Năm', type: 'number', value: () => new Date().getFullYear() },
+        { name: 'tuNgay', label: 'Từ ngày', type: 'date' }, { name: 'denNgay', label: 'Đến ngày', type: 'date' }],
+      actions: [
+        { label: 'Chốt', show: (r) => !r.isChot, run: (r) => api('PATCH', 'chamcong', `/BangChamCongTheoThang/${r.id}/chot?updatedAt=${encodeURIComponent(r.updatedAt)}`) },
+        { label: 'Mở chốt', show: (r) => r.isChot, run: (r) => api('PATCH', 'chamcong', `/BangChamCongTheoThang/${r.id}/mo-chot?updatedAt=${encodeURIComponent(r.updatedAt)}`) },
+        'delete'] },
+
+    kytinhluong: { svc: 'tinhluong', path: '/KyTinhLuong', title: 'Kỳ tính lương',
+      note: 'Tính lương gọi gRPC GetAllNhanVien sang NhanSu. Khoá/Mở/Tính lương dùng updatedAt của dòng để kiểm tra concurrency (409 nếu dữ liệu đã đổi).',
+      cols: [['maKy', 'Mã kỳ'], ['ngayBatDau', 'Bắt đầu'], ['ngayKetThuc', 'Kết thúc'], ['chotTinhLuong', 'Đã khoá']],
+      fields: [{ name: 'maKy', label: 'Mã kỳ', value: () => new Date().toISOString().slice(0, 7) }, { name: 'ngayBatDau', label: 'Ngày bắt đầu', type: 'date' }, { name: 'ngayKetThuc', label: 'Ngày kết thúc', type: 'date' }],
+      actions: [
+        { label: 'Tính lương', run: (r) => api('PATCH', 'tinhluong', `/KyTinhLuong/${r.id}/tinhluong?updatedAt=${encodeURIComponent(r.updatedAt)}`) },
+        { label: 'Khoá', show: (r) => !r.chotTinhLuong, run: (r) => api('PATCH', 'tinhluong', `/KyTinhLuong/${r.id}/khoa?updatedAt=${encodeURIComponent(r.updatedAt)}`) },
+        { label: 'Mở', show: (r) => r.chotTinhLuong, run: (r) => api('PATCH', 'tinhluong', `/KyTinhLuong/${r.id}/mo?updatedAt=${encodeURIComponent(r.updatedAt)}`) },
+        'delete'] },
+  };
+
+  const TABS = [
+    ['smoke', 'Kịch bản tự động'],
+    ['nhansu', 'Nhân sự', ['phongban', 'chucvu', 'nhanvien', 'vanbang']],
+    ['quyetdinh', 'Quyết định', ['qdnangluong', 'qdbonhiem']],
+    ['chamcong', 'Chấm công', ['loaichamcong', 'phieunghi', 'bangcong']],
+    ['tinhluong', 'Tính lương', ['kytinhluong']],
+    ['console', 'Gọi API tự do'],
+  ];
+
+  // ---------- Reference cache ----------
+  const cache = {};
+  async function loadRef(key, force) {
+    if (cache[key] && !force) return cache[key];
+    const r = RESOURCES[key];
+    cache[key] = (await api('GET', r.svc, r.path, undefined, { silent: true })) || [];
+    return cache[key];
+  }
+  const refLabel = (key, id) => {
+    const item = (cache[key] || []).find((x) => x.id === id);
+    return item ? RESOURCES[key].label(item) : id;
+  };
+
+  // ---------- Render resource panels ----------
+  function renderTabPanels() {
+    for (const [tab, , keys] of TABS) {
+      if (!keys) continue;
+      const sec = document.querySelector(`section[data-tab="${tab}"]`);
+      sec.innerHTML = keys.map((k) => {
+        const r = RESOURCES[k];
+        return `<div class="panel" id="p-${k}">
+          <div class="row"><h2 class="grow">${esc(r.title)}</h2><button class="small" data-reload="${k}">↻ Tải lại</button></div>
+          ${r.note ? `<p class="hint">${esc(r.note)}</p>` : '<p class="hint"></p>'}
+          <div class="resource">
+            <div class="table-wrap" id="t-${k}"><div class="empty">Bấm “Tải lại” để lấy dữ liệu.</div></div>
+            <form class="create" id="f-${k}" autocomplete="off"></form>
+          </div></div>`;
+      }).join('');
+      keys.forEach((k) => renderForm(k));
+    }
+    document.querySelectorAll('[data-reload]').forEach((b) => (b.onclick = () => loadTable(b.dataset.reload)));
+  }
+
+  function fieldDefault(f) { return typeof f.value === 'function' ? f.value() : f.value ?? ''; }
+
+  function renderForm(key) {
+    const r = RESOURCES[key];
+    const form = $('f-' + key);
+    form.innerHTML = `<strong>Tạo mới</strong>` + r.fields.map((f) => {
+      const id = `in-${key}-${f.name}`;
+      let input;
+      if (f.ref) input = `<select id="${id}" data-ref="${f.ref}"><option value="">— chọn —</option></select>`;
+      else if (f.enum) input = `<select id="${id}">${f.optional ? '<option value="">— không —</option>' : ''}${ENUMS[f.enum].map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select>`;
+      else input = `<input id="${id}" type="${f.type === 'number' ? 'number' : f.type || 'text'}" ${f.type === 'number' ? 'step="any"' : ''} value="${esc(fieldDefault(f))}">`;
+      return `<label>${esc(f.label)}${f.optional ? ' (tuỳ chọn)' : ''}${input}</label>`;
+    }).join('') + `<button class="primary" type="submit">Tạo</button>`;
+
+    r.fields.filter((f) => f.fill).forEach((f) => {
+      $(`in-${key}-${f.name}`).addEventListener('change', (e) => {
+        const item = (cache[f.ref] || []).find((x) => x.id === e.target.value);
+        if (!item) return;
+        Object.entries(f.fill).forEach(([target, src]) => { const v = get(item, src); if (v != null) $(`in-${key}-${target}`).value = v; });
+      });
+    });
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const body = {};
+      for (const f of r.fields) {
+        const raw = $(`in-${key}-${f.name}`).value.trim();
+        if (!raw) { if (f.optional) { body[f.name] = null; continue; } return toast(`Thiếu “${f.label}”`, 'err'); }
+        if (f.type === 'number') body[f.name] = Number(raw);
+        else if (f.type === 'date') body[f.name] = toIsoDate(raw);
+        else if (f.type === 'time') body[f.name] = raw.length === 5 ? raw + ':00' : raw;
+        else if (f.enum && typeof ENUMS[f.enum][0][0] === 'number') body[f.name] = Number(raw);
+        else body[f.name] = raw;
+      }
+      const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
+      try {
+        const res = await api('POST', r.svc, r.path, body);
+        toast(`Đã tạo ${r.title.toLowerCase()}${typeof res === 'string' ? ` (${res.slice(0, 8)}…)` : ''}`);
+        form.querySelectorAll('input').forEach((i) => { const f = r.fields.find((x) => `in-${key}-${x.name}` === i.id); i.value = fieldDefault(f); });
+        await loadTable(key);
+      } catch (err) { toast(err.message, 'err'); }
+      finally { btn.disabled = false; }
+    };
+  }
+
+  async function fillRefSelects(key) {
+    const r = RESOURCES[key];
+    for (const f of r.fields.filter((x) => x.ref)) {
+      const sel = $(`in-${key}-${f.name}`);
+      const prev = sel.value;
+      try {
+        const items = await loadRef(f.ref);
+        sel.innerHTML = `<option value="">— chọn —</option>` + items.map((x) => `<option value="${esc(x.id)}">${esc(RESOURCES[f.ref].label(x))}</option>`).join('');
+        sel.value = prev;
+      } catch { /* hiển thị qua log */ }
+    }
+  }
+
+  async function loadTable(key) {
+    const r = RESOURCES[key];
+    const wrap = $('t-' + key);
+    wrap.innerHTML = '<div class="empty">Đang tải…</div>';
+    // nạp các danh mục tham chiếu cần cho cột hiển thị
+    const refCols = r.cols.map((c) => c[2]).filter((k) => k && RESOURCES[k]);
+    await Promise.all([...new Set(refCols)].map((k) => loadRef(k).catch(() => null)));
+    let rows;
+    try { rows = (await api('GET', r.svc, r.path)) || []; }
+    catch (e) { wrap.innerHTML = `<div class="empty" style="color:var(--err)">${esc(e.message)}</div>`; return; }
+    if (r.label) cache[key] = rows;
+    fillRefSelects(key);
+    // cập nhật dropdown ở các form khác đang dùng danh mục này
+    Object.keys(RESOURCES).forEach((k) => { if (k !== key && RESOURCES[k].fields.some((f) => f.ref === key) && $('f-' + k)) fillRefSelects(k); });
+    if (!rows.length) { wrap.innerHTML = '<div class="empty">Chưa có dữ liệu.</div>'; return; }
+    const actions = r.actions || [];
+    wrap.innerHTML = `<table><thead><tr>${r.cols.map((c) => `<th>${esc(c[1])}</th>`).join('')}<th>Id</th><th></th></tr></thead><tbody>${
+      rows.map((row, i) => `<tr>${r.cols.map(([p, , kind]) => {
+        const v = get(row, p);
+        if (kind === 'num') return `<td class="num">${fmt(v)}</td>`;
+        if (kind && kind.startsWith('enum:')) return `<td>${esc(enumLabel(kind.slice(5), v))}</td>`;
+        if (kind && RESOURCES[kind]) return `<td>${esc(refLabel(kind, v))}</td>`;
+        return `<td>${fmt(v)}</td>`;
+      }).join('')}<td><span class="id" title="${esc(row.id)}">${esc(String(row.id).slice(0, 8))}…</span></td>
+      <td class="actions">${actions.map((a, j) => {
+        if (a === 'delete') return `<button class="small danger" data-act="${i}:del">Xoá</button>`;
+        if (a.show && !a.show(row)) return '';
+        return `<button class="small" data-act="${i}:${j}">${esc(a.label)}</button>`;
+      }).join(' ')}</td></tr>`).join('')}</tbody></table>`;
+    wrap.querySelectorAll('[data-act]').forEach((b) => (b.onclick = async () => {
+      const [i, j] = b.dataset.act.split(':');
+      const row = rows[+i];
+      try {
+        if (j === 'del') {
+          if (!confirm(`Xoá bản ghi ${row.id}?`)) return;
+          await api('DELETE', r.svc, `${r.path}/${row.id}`);
+          toast('Đã xoá');
+        } else {
+          const ok = await actions[+j].run(row);
+          if (ok === false) return;
+          toast(`${actions[+j].label}: thành công`);
+        }
+        await loadTable(key);
+      } catch (e) { toast(e.message, 'err'); }
+    }));
+  }
+
+  // ---------- Tabs ----------
+  let activeTab = store.get('hrm.tab') || 'smoke';
+  function showTab(tab) {
+    activeTab = tab; store.set('hrm.tab', tab);
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('section[data-tab]').forEach((s) => s.classList.toggle('hidden', s.dataset.tab !== tab));
+    refreshActive();
+  }
+  function refreshActive() {
+    if (!token) return;
+    const t = TABS.find((x) => x[0] === activeTab);
+    if (t && t[2]) t[2].forEach((k) => loadTable(k));
+  }
+  $('tabs').innerHTML = TABS.map(([k, n]) => `<button data-tab="${k}">${esc(n)}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+
+  // ---------- Console ----------
+  $('cSend').onclick = async () => {
+    const m = $('cMethod').value, s = $('cService').value, p = $('cPath').value.trim() || '/';
+    let body;
+    const raw = $('cBody').value.trim();
+    if (raw && m !== 'GET') { try { body = JSON.parse(raw); } catch { return toast('Body không phải JSON hợp lệ', 'err'); } }
+    try { const r = await api(m, s, p.startsWith('/') ? p : '/' + p, body); $('cResult').textContent = JSON.stringify(r, null, 2) ?? '(trống)'; }
+    catch (e) { $('cResult').textContent = `Lỗi ${e.status}: ${e.message}\n\n${JSON.stringify(e.data, null, 2) ?? ''}`; }
+  };
+
+  // ---------- Smoke test ----------
+  const KNOWN = [
+    [/Concurrency Conflict|bị thay đổi bởi người dùng khác/i, 'HTTP 409: updatedAt gửi lên không khớp bản ghi trong DB (dữ liệu đã bị đổi, hoặc lỗi lưu bản ghi con). Xem log của service tương ứng.'],
+  ];
+  const knownHint = (msg, status) => {
+    const hit = KNOWN.find(([re]) => re.test(msg));
+    if (hit) return hit[1];
+    if (status === 502) return 'Gateway trả 502: service phía sau lỗi 500 và Polly retry lại request POST (body đã bị đọc) nên mất thông báo lỗi gốc, hoặc circuit breaker đang mở 30 giây. Xem log của service tương ứng.';
+    return '';
+  };
+
+  function smokeSteps() {
+    const run = Math.random().toString(36).slice(2, 7).toUpperCase();
+    const ctx = { run, today: toIsoDate(today()) };
+    const as = (m, s, p, b) => api(m, s, p, b, { token: ctx.token });
+    const must = (cond, msg) => { if (!cond) throw new Error(msg); };
+    return { ctx, steps: [
+      { name: 'Gateway thấy cả 4 service (Swagger)', tags: ['rest'], run: async () => {
+        const res = await Promise.all(SERVICES.map(async ([k]) => { try { return (await fetch(`${base()}/swagger/${k}/v1/swagger.json`)).ok; } catch { return false; } }));
+        const down = SERVICES.filter((_, i) => !res[i]).map(([, n]) => n);
+        must(!down.length, `Không lấy được Swagger của: ${down.join(', ')}`);
+        return 'Nhân sự, Quyết định, Chấm công, Tính lương đều phản hồi';
+      } },
+      { name: 'Đăng ký + đăng nhập tài khoản test', tags: ['rest'], run: async () => {
+        const username = `smoke_${run.toLowerCase()}`;
+        const password = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())) + 'Aa1!';
+        await api('POST', 'nhansu', '/Auth/register', { username, password, role: 'Admin' }, { token: null });
+        ctx.token = await login(username, password);
+        must(ctx.token, 'Không nhận được JWT');
+        return `Tài khoản ${username}, đã nhận JWT`;
+      } },
+      { name: 'Tạo phòng ban', tags: ['rest'], needs: ['token'], run: async () => {
+        await as('POST', 'nhansu', '/PhongBan', { maPhongBan: `PB${run}`, tenPhongBan: `Phòng test ${run}` });
+        const pb = ((await as('GET', 'nhansu', '/PhongBan')) || []).find((x) => x.maPhongBan === `PB${run}`);
+        must(pb, 'Không tìm thấy phòng ban vừa tạo');
+        ctx.phongBanId = pb.id; return pb.id;
+      } },
+      { name: 'Tạo 2 chức vụ (Nhân viên, Trưởng phòng)', tags: ['rest'], needs: ['token'], run: async () => {
+        ctx.cv1 = await as('POST', 'nhansu', '/ChucVu', { maChucVu: `NV${run}`, tenChucVu: `Nhân viên ${run}`, phuCap: 1000000 });
+        ctx.cv2PhuCap = 5000000.5;
+        ctx.cv2 = await as('POST', 'nhansu', '/ChucVu', { maChucVu: `TP${run}`, tenChucVu: `Trưởng phòng ${run}`, phuCap: ctx.cv2PhuCap });
+        return `${ctx.cv1.slice(0, 8)}…, ${ctx.cv2.slice(0, 8)}…`;
+      } },
+      { name: 'Tạo nhân viên', tags: ['rest'], needs: ['phongBanId', 'cv1'], run: async () => {
+        ctx.nvId = await as('POST', 'nhansu', '/NhanVien', { maNhanVien: `NV${run}`, tenNhanVien: `Nguyễn Văn Test ${run}`, ngaySinh: '1995-05-10T00:00:00Z',
+          gioiTinh: 'Nam', email: `nv${run.toLowerCase()}@example.test`, phongBanID: ctx.phongBanId, chucVuID: ctx.cv1 });
+        must(typeof ctx.nvId === 'string', 'Không nhận được Id nhân viên');
+        return ctx.nvId;
+      } },
+      { name: 'QĐ nâng lương → NhanSu cập nhật lương', tags: ['rest', 'grpc'], needs: ['nvId'], run: async () => {
+        ctx.luongMoi = 15000000.75;
+        ctx.qdnlId = await as('POST', 'quyetdinh', '/QuyetDinhNangLuong', { soQuyetDinh: `QD-NL-${run}`, ngayQuyetDinh: ctx.today, noiDung: 'Nâng lương (test)',
+          ngayHieuLuc: ctx.today, ghiChu: null, maNhanVien: ctx.nvId, luongCoBanCu: 0, luongCoBanMoi: ctx.luongMoi });
+        const nv = await as('GET', 'nhansu', `/NhanVien/${ctx.nvId}`);
+        must(nv.luongCoBan === ctx.luongMoi, `Lương sau cập nhật là ${nv.luongCoBan}, mong đợi ${ctx.luongMoi}`);
+        return `gRPC UpdateLuong OK, lương = ${nv.luongCoBan.toLocaleString('vi-VN')} (giữ đủ số lẻ)`;
+      } },
+      { name: 'Danh sách QĐ nâng lương kèm thông tin nhân viên', tags: ['grpc'], needs: ['qdnlId'], run: async () => {
+        const qd = ((await as('GET', 'quyetdinh', '/QuyetDinhNangLuong')) || []).find((x) => x.id === ctx.qdnlId);
+        must(qd, 'Không thấy QĐ vừa tạo');
+        must(qd.nhanVien && qd.nhanVien.id === ctx.nvId, 'QĐ không có thông tin nhân viên (gRPC GetNhanVienById lỗi)');
+        return `gRPC GetNhanVienById OK: ${qd.nhanVien.tenNhanVien}`;
+      } },
+      { name: 'QĐ bổ nhiệm lấy phụ cấp chức vụ mới', tags: ['rest', 'grpc'], needs: ['nvId', 'cv2'], run: async () => {
+        ctx.qdbnId = await as('POST', 'quyetdinh', '/QuyetDinhBoNhiem', { soQuyetDinh: `QD-BN-${run}`, ngayQuyetDinh: ctx.today, noiDung: 'Bổ nhiệm (test)',
+          ngayHieuLuc: ctx.today, ghiChu: null, maNhanVien: ctx.nvId, chucVuCu: ctx.cv1, chucVuMoi: ctx.cv2, lyDo: 'Thăng chức' });
+        const qd = ((await as('GET', 'quyetdinh', '/QuyetDinhBoNhiem')) || []).find((x) => x.id === ctx.qdbnId);
+        must(qd, 'Không thấy QĐ bổ nhiệm vừa tạo');
+        must(qd.phuCapMoi === ctx.cv2PhuCap, `Phụ cấp mới ${qd.phuCapMoi}, mong đợi ${ctx.cv2PhuCap}`);
+        return `gRPC GetChucVuById OK, phụ cấp mới = ${qd.phuCapMoi.toLocaleString('vi-VN')}`;
+      } },
+      { name: 'Event bổ nhiệm → NhanSu đổi chức vụ nhân viên', tags: ['mq'], needs: ['qdbnId'], run: async () => {
+        for (let i = 0; i < 15; i++) {
+          const nv = await as('GET', 'nhansu', `/NhanVien/${ctx.nvId}`);
+          if (nv.chucVu && nv.chucVu.id === ctx.cv2) return `Sau ~${i} giây: chức vụ = ${nv.chucVu.tenChucVu}`;
+          await sleep(1000);
+        }
+        throw new Error('Sau 15 giây chức vụ nhân viên vẫn chưa đổi (kiểm tra RabbitMQ / consumer của NhanSu)');
+      } },
+      { name: 'Chấm công: tạo loại + phiếu nghỉ', tags: ['rest', 'grpc'], needs: ['nvId'], run: async () => {
+        ctx.loaiId = await as('POST', 'chamcong', '/LoaiChamCong', { maLoai: `NP${run}`, tenLoai: `Nghỉ phép ${run}`, heSo: 1, hinhThuc: 2 });
+        ctx.phieuId = await as('POST', 'chamcong', '/PhieuDangKyNghi', { ngayNghi: ctx.today, lyDo: 'Test', maNhanVien: ctx.nvId, loaiChamCongId: ctx.loaiId, tuGio: null, denGio: null, loaiBuoi: null });
+        return `gRPC GetNhanVienById từ ChamCong OK, phiếu ${String(ctx.phieuId).slice(0, 8)}…`;
+      } },
+      { name: 'Chấm công: tạo và chốt bảng công tháng', tags: ['rest'], needs: ['token'], run: async () => {
+        const d = new Date(); const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+        const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+        const id = await as('POST', 'chamcong', '/BangChamCongTheoThang', { thang: m, nam: y, tuNgay: `${y}-${String(m).padStart(2, '0')}-01T00:00:00Z`, denNgay: `${y}-${String(m).padStart(2, '0')}-${last}T00:00:00Z` });
+        const bc = await as('GET', 'chamcong', `/BangChamCongTheoThang/${id}`);
+        await as('PATCH', 'chamcong', `/BangChamCongTheoThang/${id}/chot?updatedAt=${encodeURIComponent(bc.updatedAt)}`);
+        const after = await as('GET', 'chamcong', `/BangChamCongTheoThang/${id}`);
+        must(after.isChot === true, 'Bảng công chưa được chốt');
+        return 'Đã chốt (kiểm tra optimistic concurrency với updatedAt)';
+      } },
+      { name: 'Tính lương cho kỳ mới', tags: ['rest', 'grpc'], needs: ['nvId'], run: async () => {
+        const id = await as('POST', 'tinhluong', '/KyTinhLuong', { maKy: `KY-${run}`, ngayBatDau: ctx.today, ngayKetThuc: ctx.today });
+        const ky = await as('GET', 'tinhluong', `/KyTinhLuong/${id}`);
+        await as('PATCH', 'tinhluong', `/KyTinhLuong/${id}/tinhluong?updatedAt=${encodeURIComponent(ky.updatedAt)}`);
+        return 'gRPC GetAllNhanVien OK, đã tính lương';
+      } },
+    ] };
+  }
+
+  const ICON = { pending: '○', running: '◌', ok: '✓', fail: '✕', skip: '–', warn: '!' };
+  function renderSteps(steps) {
+    $('steps').innerHTML = steps.map((s, i) => `<li class="step ${s.state || 'pending'}" id="step-${i}">
+      <span class="icon">${ICON[s.state || 'pending']}</span>
+      <div><div>${esc(s.name)}</div>${s.detail ? `<div class="detail">${esc(s.detail)}</div>` : ''}${s.hint ? `<div class="detail">${esc(s.hint)}</div>` : ''}</div>
+      <div class="row">${s.tags.map((t) => `<span class="tag ${t}">${{ rest: 'REST', grpc: 'gRPC', mq: 'RabbitMQ' }[t]}</span>`).join('')}
+      ${s.ms != null ? `<span class="ms" style="color:var(--muted);font-size:12px">${Math.round(s.ms)} ms</span>` : ''}</div></li>`).join('');
+  }
+  renderSteps(smokeSteps().steps);
+
+  $('btnSmoke').onclick = async () => {
+    const btn = $('btnSmoke'); btn.disabled = true;
+    const { ctx, steps } = smokeSteps();
+    const keepGoing = $('smokeContinue').checked;
+    let stop = false;
+    renderSteps(steps); $('smokeSummary').textContent = '';
+    for (const s of steps) {
+      const missing = (s.needs || []).filter((k) => !ctx[k]);
+      if (stop || missing.length) { s.state = 'skip'; s.detail = stop ? 'Bỏ qua do bước trước lỗi' : `Bỏ qua: thiếu dữ liệu từ bước trước (${missing.join(', ')})`; renderSteps(steps); continue; }
+      s.state = 'running'; renderSteps(steps);
+      const t0 = performance.now();
+      try { s.detail = await s.run(); s.state = 'ok'; }
+      catch (e) { s.state = 'fail'; s.detail = (e.status ? `HTTP ${e.status}: ` : '') + e.message; s.hint = knownHint(e.message, e.status); if (!keepGoing) stop = true; }
+      s.ms = performance.now() - t0;
+      renderSteps(steps);
+    }
+    const ok = steps.filter((s) => s.state === 'ok').length, fail = steps.filter((s) => s.state === 'fail').length, skip = steps.filter((s) => s.state === 'skip').length;
+    $('smokeSummary').innerHTML = `<span class="status ${fail ? 'err' : 'ok'}">${ok}/${steps.length} bước đạt${fail ? ` · ${fail} lỗi` : ''}${skip ? ` · ${skip} bỏ qua` : ''}</span> <span class="hint">Mã chạy: ${esc(ctx.run)}</span>`;
+    btn.disabled = false;
+  };
+
+  // ---------- Init ----------
+  renderTabPanels();
+  setAuth(token, currentUser);
+  showTab(TABS.some((t) => t[0] === activeTab) ? activeTab : 'smoke');
+  checkHealth();
+})();
+</script>
+</body>
+</html>

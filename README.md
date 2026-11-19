@@ -86,6 +86,7 @@ HRM_Microservices_Demo/
 ├── Protos/
 │   └── nhansu.proto                # Contract gRPC của NhanSu (server + client dùng chung)
 ├── ApiGateway/                     # YARP gateway
+│   └── wwwroot/index.html          #   Web UI kiểm thử (http://localhost:8080/)
 ├── QuanLyNhanSuMicroservice/       # Service Nhân sự
 │   ├── QuanLyNhanVien.API/         #   Controllers, Filters, Grpc (NhanSuGrpcService)
 │   ├── QuanLyNhanVien.Application/ #   Commands/DTO, Queries, Handlers, Consumers, Events, Exception
@@ -114,6 +115,7 @@ Sau khi khởi động:
 
 | URL | Mô tả |
 |---|---|
+| http://localhost:8080/ | **HRM Test Console** – web UI kiểm thử (xem [bên dưới](#web-ui-kiểm-thử)) |
 | http://localhost:8080/swagger | Swagger tổng hợp của tất cả service qua Gateway |
 | http://localhost:15672 | RabbitMQ Management |
 | http://localhost:16686 | Jaeger UI |
@@ -140,6 +142,26 @@ Mỗi service tự chạy migration khi khởi động, nên không cần `dotne
    Lưu ý:
    - NhanSu luôn lắng nghe theo `Kestrel:Endpoints` trong `appsettings.json` (8081 REST/HTTP1, 9081 gRPC/HTTP2), bỏ qua `applicationUrl` trong `launchSettings.json`.
    - Các service còn lại dùng port trong `Properties/launchSettings.json` (khác port Docker 8082–8084). Nếu chạy Gateway local thì cập nhật lại `ReverseProxy:Clusters:*:Destinations:destination1:Address` trong `ApiGateway/appsettings.json` cho khớp.
+
+## Web UI kiểm thử
+
+API Gateway phục vụ sẵn một trang kiểm thử tại **http://localhost:8080/** (file [`ApiGateway/wwwroot/index.html`](ApiGateway/wwwroot/index.html), HTML/JS thuần, không cần build hay CDN). Trang gọi API qua chính Gateway nên không vướng CORS.
+
+- **Kịch bản tự động**: bấm *Chạy toàn bộ* để tạo dữ liệu mới (hậu tố ngẫu nhiên, tài khoản test riêng) và đi qua toàn bộ luồng; mỗi bước ghi rõ kênh được kiểm tra (REST, gRPC tới NhanSu, RabbitMQ) và kết quả đạt/lỗi/bỏ qua:
+  1. Gateway thấy cả 4 service (qua Swagger)
+  2. Đăng ký + đăng nhập
+  3. Tạo phòng ban, 2 chức vụ, nhân viên
+  4. QĐ nâng lương → lương nhân viên được cập nhật (kiểm tra giữ đủ số lẻ)
+  5. Danh sách QĐ kèm thông tin nhân viên
+  6. QĐ bổ nhiệm lấy đúng phụ cấp chức vụ mới
+  7. Event bổ nhiệm → NhanSu đổi chức vụ nhân viên (chờ tối đa 15 giây)
+  8. Chấm công: loại chấm công + phiếu nghỉ; tạo và chốt bảng công tháng
+  9. Tạo kỳ và tính lương
+- **Tab theo service** (Nhân sự, Quyết định, Chấm công, Tính lương): xem bảng dữ liệu, tạo mới bằng form (chọn nhân viên/chức vụ/phòng ban từ dropdown thay vì gõ Guid), xoá, và các thao tác riêng như sửa lương, chốt/mở chốt bảng công, khoá/mở/tính lương kỳ.
+- **Gọi API tự do**: chọn method, service, đường dẫn và body JSON.
+- **Nhật ký request**: method, URL, status, thời gian, body request/response và `X-Correlation-Id` (dùng để tìm log trong MongoDB/trace trong Jaeger).
+
+Đăng nhập ở góc phải (nút *Đăng ký* tạo tài khoản role `Admin`). Token và tab đang mở được nhớ trong `localStorage` của trình duyệt. Ô *Gateway* cho phép trỏ tới Gateway khác (ví dụ khi mở file HTML trực tiếp).
 
 ## Xác thực (JWT)
 
