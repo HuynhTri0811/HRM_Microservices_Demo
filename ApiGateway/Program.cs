@@ -18,6 +18,10 @@ builder.ConfigureObservability();
 
 var app = builder.Build();
 
+// Web UI kiểm thử (wwwroot/index.html) tại http://localhost:8080/
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseRouting();
 
 // Setup Metrics & Prometheus
