@@ -112,7 +112,9 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities
                 throw new BadRequestException("Ngày thôi việc không được lớn hơn ngày hiện tại","INVALID_DATE");
             if(NgayThoiViec < NgayVaoCongTy)
                 throw new BadRequestException("Ngày thôi việc không được nhỏ hơn ngày vào công ty","INVALID_DATE");
-            if(TinhTrangNhanVien.KhongConCongTac == false)
+            // Kiểm tra trạng thái MỚI được truyền vào (trước đây kiểm tra nhầm trạng thái hiện tại
+            // của nhân viên, nên nhân viên đang làm việc không bao giờ chuyển sang thôi việc được).
+            if(tinhTrangNhanVien.KhongConCongTac == false)
                 throw new BadRequestException("Tình trạng nhân viên phải là không còn công tác", "REQUEST_VALIDATION_ERROR");
                 
             this.TinhTrangNhanVien = tinhTrangNhanVien;
