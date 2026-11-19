@@ -7,7 +7,8 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Command.NhanSu
 {
     public record NhanVienDto(Guid Id, string MaNhanVien, string TenNhanVien, DateTime NgaySinh, string GioiTinh, string Email, decimal LuongCoBan, decimal PhuCap, PhongBanDto? PhongBan, ChucVuDto? ChucVu, ICollection<VanBangDto> VanBangs);
 
-    public record CreateNhanVienDto(string MaNhanVien, string TenNhanVien, DateTime NgaySinh, string GioiTinh, string Email, Guid PhongBanID, Guid ChucVuID) : IRequest<Guid>;
+    // NgayVaoCongTy tuỳ chọn: bỏ trống thì lấy ngày hôm nay.
+    public record CreateNhanVienDto(string MaNhanVien, string TenNhanVien, DateTime NgaySinh, string GioiTinh, string Email, Guid PhongBanID, Guid ChucVuID, DateTime? NgayVaoCongTy = null) : IRequest<Guid>;
 
     public record UpdateNhanVienRequestDTO(string MaNhanVien, string TenNhanVien, DateTime NgaySinh, string GioiTinh, string Email, Guid PhongBanID, Guid ChucVuID);
 

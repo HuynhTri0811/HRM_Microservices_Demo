@@ -39,6 +39,40 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Infrastructure.Persistence.Dat
                     modelBuilder.Entity(entityType.ClrType).HasQueryFilter(ConvertFilterExpression(entityType.ClrType));
                 }
             }
+
+            SeedTinhTrangNhanVien(modelBuilder);
+        }
+
+        // Danh mục tình trạng nhân viên bắt buộc phải có (NhanViens.TinhTrangNhanVienId là khoá ngoại NOT NULL).
+        private static void SeedTinhTrangNhanVien(ModelBuilder modelBuilder)
+        {
+            var seededAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            modelBuilder.Entity<TinhTrangNhanVien>().HasData(
+                new
+                {
+                    Id = TinhTrangNhanVien.DangLamViecId,
+                    MaQuanLy = TinhTrangNhanVien.MaDangLamViec,
+                    TenTinhTrang = "Đang làm việc",
+                    KhongConCongTac = false,
+                    CreatedAt = seededAt,
+                    UpdatedAt = seededAt,
+                    CreatedBy = "System",
+                    UpdatedBy = "System",
+                    IsDeleted = false
+                },
+                new
+                {
+                    Id = TinhTrangNhanVien.DaNghiViecId,
+                    MaQuanLy = TinhTrangNhanVien.MaDaNghiViec,
+                    TenTinhTrang = "Đã nghỉ việc",
+                    KhongConCongTac = true,
+                    CreatedAt = seededAt,
+                    UpdatedAt = seededAt,
+                    CreatedBy = "System",
+                    UpdatedBy = "System",
+                    IsDeleted = false
+                });
         }
 
         private LambdaExpression ConvertFilterExpression(Type entityType)
