@@ -1,6 +1,6 @@
 using System;
 
-namespace QuanLyNhanSuMicroservice.QuyetDinhService.Application.Events
+namespace QuyetDinhService.QuyetDinhService.Application.Events
 {
     public class QuyetDinhBoNhiemCreatedEvent
     {
