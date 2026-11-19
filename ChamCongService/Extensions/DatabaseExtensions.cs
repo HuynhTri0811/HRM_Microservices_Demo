@@ -1,4 +1,5 @@
 using System;
+using HRM.Contracts.NhanSu;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,11 +25,12 @@ namespace ChamCongService.Extensions
             builder.Services.AddScoped<IPhieuDangKyNghiRepository, PhieuDangKyNghiRepository>();
             builder.Services.AddScoped<IBangChamCongTheoThangRepository, BangChamCongTheoThangRepository>();
 
-            // Register HttpClient Client
-            builder.Services.AddHttpClient<INhanSuServiceClient, NhanSuServiceClient>(client =>
+            // Register gRPC client tới NhanSu service (Protos/nhansu.proto)
+            builder.Services.AddGrpcClient<NhanSuGrpc.NhanSuGrpcClient>(options =>
             {
-                client.BaseAddress = new Uri(builder.Configuration["NhanSuApiUrl"] ?? "http://nhansu-api:8081");
+                options.Address = new Uri(builder.Configuration["NhanSuGrpcUrl"] ?? "http://nhansu-api:9081");
             });
+            builder.Services.AddScoped<INhanSuServiceClient, NhanSuServiceClient>();
 
             // Register MediatR
             builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using QuanLyNhanSuMicroservice.Extensions;
 using QuanLyNhanSuMicroservice.QuanLyNhanVien.API.Filters;
+using QuanLyNhanSuMicroservice.QuanLyNhanVien.API.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<ResponseLoggingFilter>();
 });
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddGrpc();
 
 // Configure custom microservice configurations
 builder.ConfigureSwagger();
@@ -47,6 +49,9 @@ app.UseAuthorization();
 app.UseObservability();
 
 app.MapControllers();
+
+// gRPC cho giao tiếp nội bộ giữa các service (port HTTP/2 riêng, xem Kestrel:Endpoints:Grpc)
+app.MapGrpcService<NhanSuGrpcService>();
 
 try
 {

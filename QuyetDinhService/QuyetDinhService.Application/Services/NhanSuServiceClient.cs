@@ -1,18 +1,21 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
-using System.Text;
+using System.Globalization;
+using Grpc.Core;
+using HRM.Contracts.NhanSu;
 using QuyetDinhService.QuyetDinhService.Application.Services.DTO;
 
 namespace QuyetDinhService.QuyetDinhService.Application.Services
 {
+    /// <summary>
+    /// Gọi sang NhanSu service qua gRPC (Protos/nhansu.proto).
+    /// </summary>
     public class NhanSuServiceClient : INhanSuServiceClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly NhanSuGrpc.NhanSuGrpcClient _grpcClient;
         private readonly ILogger<NhanSuServiceClient> _logger;
 
-        public NhanSuServiceClient(HttpClient httpClient, ILogger<NhanSuServiceClient> logger)
+        public NhanSuServiceClient(NhanSuGrpc.NhanSuGrpcClient grpcClient, ILogger<NhanSuServiceClient> logger)
         {
-            _httpClient = httpClient;
+            _grpcClient = grpcClient;
             _logger = logger;
         }
 
@@ -20,45 +23,17 @@ namespace QuyetDinhService.QuyetDinhService.Application.Services
         {
             try
             {
-                var requestUrl = $"/api/NhanVien/{nhanVienId}/update-luong";
-
-                var payload = new UpdateLuongRequestDTO
+                var reply = await _grpcClient.UpdateLuongAsync(new UpdateLuongRequest
                 {
-                    LuongCoBan = luongMoi,
-                    PhuCap = 0
-                };
+                    NhanVienId = nhanVienId.ToString(),
+                    LuongCoBan = luongMoi.ToString(CultureInfo.InvariantCulture)
+                }, BuildHeaders(token));
 
-                var jsonOptions = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-
-                var content = new StringContent(JsonSerializer.Serialize(payload, jsonOptions), Encoding.UTF8, "application/json");
-
-                var request = new HttpRequestMessage(new HttpMethod("PATCH"), requestUrl);
-                request.Content = content;
-
-                if (!string.IsNullOrEmpty(token))
-                {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return true;
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to update luong in NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
-                return false;
+                return reply.Success;
             }
-            catch (Exception ex)
+            catch (RpcException ex)
             {
-                _logger.LogError(ex, "Exception while updating luong in NhanSu API");
+                _logger.LogError(ex, "gRPC UpdateLuong tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
                 return false;
             }
         }
@@ -67,45 +42,18 @@ namespace QuyetDinhService.QuyetDinhService.Application.Services
         {
             try
             {
-                var requestUrl = $"/api/NhanVien/{nhanVienId}/update-chuc-vu";
-
-                var payload = new UpdateBoNhiemRequestDTO
+                var reply = await _grpcClient.UpdateBoNhiemAsync(new UpdateBoNhiemRequest
                 {
-                    ChucVuMoi = chucVuMoi,
-                    PhuCapMoi = phuCapMoi
-                };
+                    NhanVienId = nhanVienId.ToString(),
+                    ChucVuMoi = chucVuMoi.ToString(),
+                    PhuCapMoi = phuCapMoi.ToString(CultureInfo.InvariantCulture)
+                }, BuildHeaders(token));
 
-                var jsonOptions = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-
-                var content = new StringContent(JsonSerializer.Serialize(payload, jsonOptions), Encoding.UTF8, "application/json");
-
-                var request = new HttpRequestMessage(new HttpMethod("PATCH"), requestUrl);
-                request.Content = content;
-
-                if (!string.IsNullOrEmpty(token))
-                {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return true;
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to update bo nhiem in NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
-                return false;
+                return reply.Success;
             }
-            catch (Exception ex)
+            catch (RpcException ex)
             {
-                _logger.LogError(ex, "Exception while updating bo nhiem in NhanSu API");
+                _logger.LogError(ex, "gRPC UpdateBoNhiem tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
                 return false;
             }
         }
@@ -114,41 +62,29 @@ namespace QuyetDinhService.QuyetDinhService.Application.Services
         {
             try
             {
-                var requestUrl = $"/api/NhanVien/{nhanVienId}";
+                var reply = await _grpcClient.GetNhanVienByIdAsync(
+                    new GetNhanVienByIdRequest { Id = nhanVienId.ToString() },
+                    BuildHeaders(token));
 
-                var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-                if (!string.IsNullOrEmpty(token))
+                return new NhanVienServiceClientDto
                 {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    return JsonSerializer.Deserialize<NhanVienServiceClientDto>(content, jsonOptions);
-                }
-
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    return null;
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to get employee from NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
+                    Id = Guid.Parse(reply.Id),
+                    MaNhanVien = reply.MaNhanVien,
+                    TenNhanVien = reply.TenNhanVien,
+                    NgaySinh = reply.NgaySinh?.ToDateTime() ?? default,
+                    GioiTinh = reply.GioiTinh,
+                    Email = reply.Email,
+                    LuongCoBan = ParseDecimal(reply.LuongCoBan),
+                    PhuCap = ParseDecimal(reply.PhuCap)
+                };
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+            {
                 return null;
             }
-            catch (Exception ex)
+            catch (RpcException ex)
             {
-                _logger.LogError(ex, "Exception while getting employee from NhanSu API");
+                _logger.LogError(ex, "gRPC GetNhanVienById tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
                 return null;
             }
         }
@@ -157,43 +93,41 @@ namespace QuyetDinhService.QuyetDinhService.Application.Services
         {
             try
             {
-                var requestUrl = $"/api/ChucVu/{chucVuId}";
+                var reply = await _grpcClient.GetChucVuByIdAsync(
+                    new GetChucVuByIdRequest { Id = chucVuId.ToString() },
+                    BuildHeaders(token));
 
-                var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-                if (!string.IsNullOrEmpty(token))
+                return new ChucVuServiceClientDto
                 {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    return JsonSerializer.Deserialize<ChucVuServiceClientDto>(content, jsonOptions);
-                }
-
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    return null;
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to get chuc vu from NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
-                return null;
+                    Id = Guid.Parse(reply.Id),
+                    MaChucVu = reply.MaChucVu,
+                    TenChucVu = reply.TenChucVu,
+                    PhuCap = ParseDecimal(reply.PhuCap)
+                };
             }
-            catch (Exception ex)
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
             {
-                _logger.LogError(ex, "Exception while getting chuc vu from NhanSu API");
                 return null;
             }
+            catch (RpcException ex)
+            {
+                _logger.LogError(ex, "gRPC GetChucVuById tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
+                return null;
+            }
+        }
+
+        private static decimal ParseDecimal(string value) =>
+            decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : 0m;
+
+        private static Metadata BuildHeaders(string token)
+        {
+            var headers = new Metadata();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var actualToken = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? token[7..] : token;
+                headers.Add("Authorization", $"Bearer {actualToken}");
+            }
+            return headers;
         }
     }
 }

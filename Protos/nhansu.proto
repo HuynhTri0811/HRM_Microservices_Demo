@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+// Contract gRPC dùng chung giữa NhanSu (server) và ChamCong / QuyetDinh / TinhLuong (client).
+// Mỗi project tự sinh code từ file này qua Grpc.Tools (xem <Protobuf Include=...> trong .csproj).
+option csharp_namespace = "HRM.Contracts.NhanSu";
+
+package nhansu.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service NhanSuGrpc {
+  // Lấy một nhân viên theo Id. Trả về NOT_FOUND nếu không tồn tại.
+  rpc GetNhanVienById (GetNhanVienByIdRequest) returns (NhanVienReply);
+
+  // Lấy toàn bộ nhân viên.
+  rpc GetAllNhanVien (GetAllNhanVienRequest) returns (NhanVienListReply);
+
+  // Lấy một chức vụ theo Id. Trả về NOT_FOUND nếu không tồn tại.
+  rpc GetChucVuById (GetChucVuByIdRequest) returns (ChucVuReply);
+
+  // Cập nhật lương cơ bản của nhân viên (dùng cho quyết định nâng lương).
+  rpc UpdateLuong (UpdateLuongRequest) returns (UpdateReply);
+
+  // Cập nhật chức vụ + phụ cấp của nhân viên (dùng cho quyết định bổ nhiệm).
+  rpc UpdateBoNhiem (UpdateBoNhiemRequest) returns (UpdateReply);
+}
+
+// Guid được truyền dưới dạng string; decimal được truyền dưới dạng string (InvariantCulture)
+// để không mất độ chính xác của tiền lương.
+
+message GetNhanVienByIdRequest {
+  string id = 1;
+}
+
+message GetAllNhanVienRequest {
+}
+
+message GetChucVuByIdRequest {
+  string id = 1;
+}
+
+message UpdateLuongRequest {
+  string nhan_vien_id = 1;
+  string luong_co_ban = 2;
+}
+
+message UpdateBoNhiemRequest {
+  string nhan_vien_id = 1;
+  string chuc_vu_moi = 2;
+  string phu_cap_moi = 3;
+}
+
+message UpdateReply {
+  bool success = 1;
+}
+
+message NhanVienReply {
+  string id = 1;
+  string ma_nhan_vien = 2;
+  string ten_nhan_vien = 3;
+  google.protobuf.Timestamp ngay_sinh = 4;
+  string gioi_tinh = 5;
+  string email = 6;
+  string luong_co_ban = 7;
+  string phu_cap = 8;
+  string phong_ban_id = 9;
+  string chuc_vu_id = 10;
+}
+
+message NhanVienListReply {
+  repeated NhanVienReply items = 1;
+}
+
+message ChucVuReply {
+  string id = 1;
+  string ma_chuc_vu = 2;
+  string ten_chuc_vu = 3;
+  string phu_cap = 4;
+}

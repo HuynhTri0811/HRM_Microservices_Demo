@@ -1,19 +1,23 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
+using System.Globalization;
+using Grpc.Core;
+using HRM.Contracts.NhanSu;
+using Microsoft.Extensions.Logging;
 using TinhLuongService.Application.Services.DTO;
 using TinhLuongService.Application.Services.Interface;
-using Microsoft.Extensions.Logging;
 
 namespace TinhLuongService.Application.Services
 {
+    /// <summary>
+    /// Gọi sang NhanSu service qua gRPC (Protos/nhansu.proto).
+    /// </summary>
     public class NhanSuServiceClient : INhanSuServiceClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly NhanSuGrpc.NhanSuGrpcClient _grpcClient;
         private readonly ILogger<NhanSuServiceClient> _logger;
 
-        public NhanSuServiceClient(HttpClient httpClient, ILogger<NhanSuServiceClient> logger)
+        public NhanSuServiceClient(NhanSuGrpc.NhanSuGrpcClient grpcClient, ILogger<NhanSuServiceClient> logger)
         {
-            _httpClient = httpClient;
+            _grpcClient = grpcClient;
             _logger = logger;
         }
 
@@ -21,37 +25,34 @@ namespace TinhLuongService.Application.Services
         {
             try
             {
-                var requestUrl = "/api/NhanVien";
-                var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                var reply = await _grpcClient.GetAllNhanVienAsync(new GetAllNhanVienRequest(), BuildHeaders(token));
 
-                if (!string.IsNullOrEmpty(token))
-                {
-                    var actualToken = token.StartsWith("Bearer ") ? token.Substring(7) : token;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", actualToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    return JsonSerializer.Deserialize<IEnumerable<NhanVienServiceClientDto>>(content, jsonOptions) ?? Enumerable.Empty<NhanVienServiceClientDto>();
-                }
-
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to get all employees from NhanSu API. URL: {Url}, Status Code: {StatusCode}, Error: {Error}",
-                    _httpClient.BaseAddress + requestUrl, response.StatusCode, errorMsg);
-                return Enumerable.Empty<NhanVienServiceClientDto>();
+                return reply.Items.Select(nv => new NhanVienServiceClientDto(
+                    Guid.Parse(nv.Id),
+                    nv.MaNhanVien,
+                    nv.TenNhanVien,
+                    nv.Email,
+                    ParseDecimal(nv.LuongCoBan))).ToList();
             }
-            catch (Exception ex)
+            catch (RpcException ex)
             {
-                _logger.LogError(ex, "Exception while getting all employees from NhanSu API");
+                _logger.LogError(ex, "gRPC GetAllNhanVien tới NhanSu thất bại. Status: {Status}, Detail: {Detail}", ex.StatusCode, ex.Status.Detail);
                 return Enumerable.Empty<NhanVienServiceClientDto>();
             }
+        }
+
+        private static decimal ParseDecimal(string value) =>
+            decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : 0m;
+
+        private static Metadata BuildHeaders(string token)
+        {
+            var headers = new Metadata();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var actualToken = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? token[7..] : token;
+                headers.Add("Authorization", $"Bearer {actualToken}");
+            }
+            return headers;
         }
     }
 }
