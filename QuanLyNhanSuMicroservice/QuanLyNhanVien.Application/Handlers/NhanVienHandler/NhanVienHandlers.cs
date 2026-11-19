@@ -59,6 +59,7 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
         INhanVienRepository repository,
         IPhongBanRepository phongBanRepository,
         IChucVuRepository chucVuRepository,
+        ITinhTrangNhanVienRepository tinhTrangNhanVienRepository,
         IPublishEndpoint publishEndpoint
     ) : IRequestHandler<CreateNhanVienDto, Guid>
     {
@@ -101,6 +102,13 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
 
             employee.UpdatePosition(chucVu);
 
+            // Nhân viên mới luôn ở trạng thái "Đang làm việc" (danh mục được seed bằng migration)
+            var tinhTrang = await tinhTrangNhanVienRepository.GetByIdAsync(TinhTrangNhanVien.DangLamViecId);
+            if (tinhTrang == null)
+            {
+                throw new NotFoundException("Chưa có danh mục tình trạng nhân viên 'Đang làm việc'", "NOT_FOUND");
+            }
+            employee.SetNhanVienLamViec(tinhTrang, ToUtcDate(request.NgayVaoCongTy ?? DateTime.Now));
 
             await repository.AddAsync(employee);
             await repository.SaveChangesAsync();
@@ -120,6 +128,9 @@ namespace QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Handlers.NhanVienH
 
             return employee.Id;
         }
+
+        // Cột "timestamp with time zone" của Npgsql chỉ nhận DateTimeKind.Utc; chỉ giữ phần ngày.
+        private static DateTime ToUtcDate(DateTime value) => DateTime.SpecifyKind(value.Date, DateTimeKind.Utc);
     }
 
     public class UpdateNhanVienHandler(INhanVienRepository repository

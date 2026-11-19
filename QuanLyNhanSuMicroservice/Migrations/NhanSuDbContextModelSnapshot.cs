@@ -281,6 +281,32 @@ namespace QuanLyNhanSuMicroservice.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("TinhTrangNhanVien");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5d1c9a3e-6f0b-4c2e-9a71-1b8e2f4d0a01"),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "System",
+                            IsDeleted = false,
+                            KhongConCongTac = false,
+                            MaQuanLy = "DANG_LAM_VIEC",
+                            TenTinhTrang = "Đang làm việc",
+                            UpdatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "System"
+                        },
+                        new
+                        {
+                            Id = new Guid("5d1c9a3e-6f0b-4c2e-9a71-1b8e2f4d0a02"),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "System",
+                            IsDeleted = false,
+                            KhongConCongTac = true,
+                            MaQuanLy = "DA_NGHI_VIEC",
+                            TenTinhTrang = "Đã nghỉ việc",
+                            UpdatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UpdatedBy = "System"
+                        });
                 });
 
             modelBuilder.Entity("QuanLyNhanSuMicroservice.QuanLyNhanVien.Domain.Entities.VanBang", b =>

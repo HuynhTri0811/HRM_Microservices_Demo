@@ -5,6 +5,7 @@ using TinhLuongService.Domain.Repositories;
 using TinhLuongService.Application.Command;
 using TinhLuongService.Application.Services.Interface;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace TinhLuongService.Application.Handlers
 {
@@ -76,8 +77,10 @@ namespace TinhLuongService.Application.Handlers
 
     public class TinhLuongHandler(ITinhLuongService tinhLuongService
         , IKyTinhLuongRepositorie repository
+        , INhanVienTinhLuongRepositorie nhanVienTinhLuongRepository
         , INhanSuServiceClient nhanSuServiceClient
-        , IHttpContextAccessor httpContextAccessor) : IRequestHandler<TinhLuongCommand, bool>
+        , IHttpContextAccessor httpContextAccessor
+        , ILogger<TinhLuongHandler> logger) : IRequestHandler<TinhLuongCommand, bool>
     {
         public async Task<bool> Handle(TinhLuongCommand request, CancellationToken cancellationToken)
         {
@@ -87,7 +90,22 @@ namespace TinhLuongService.Application.Handlers
             var token = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
             var nhanViens = await nhanSuServiceClient.GetAllNhanVienAsync(token ?? "");
 
-            var nhanVienTinhLuongs = nhanViens.Select(nv => NhanVienTinhLuong.Create(
+            // NhanVienTinhLuong.Create yêu cầu LuongCoBan > 0. Nhân viên chưa có lương (vd vừa tạo, lương = 0)
+            // được bỏ qua kèm cảnh báo thay vì làm hỏng cả lần tính lương (trước đây ném ArgumentException -> 500).
+            var nhanVienHopLe = nhanViens.Where(nv => nv.LuongCoBan > 0).ToList();
+            foreach (var nv in nhanViens.Where(nv => nv.LuongCoBan <= 0))
+            {
+                logger.LogWarning("Bỏ qua nhân viên {MaNhanVien} ({NhanVienId}) khi tính lương kỳ {MaKy}: lương cơ bản = {LuongCoBan}",
+                    nv.MaNhanVien, nv.Id, entity.MaKy, nv.LuongCoBan);
+            }
+
+            // Tính lại kỳ: xoá mềm kết quả cũ để không bị trùng dòng khi tính nhiều lần
+            foreach (var cu in (entity.NhanVienTinhLuongs ?? new List<NhanVienTinhLuong>()).ToList())
+            {
+                await nhanVienTinhLuongRepository.DeleteAsync(cu.Id);
+            }
+
+            var nhanVienTinhLuongs = nhanVienHopLe.Select(nv => NhanVienTinhLuong.Create(
                 nv.Id,
                 entity.Id,
                 nv.LuongCoBan,
@@ -98,6 +116,12 @@ namespace TinhLuongService.Application.Handlers
                 0, // Thue
                 nv.LuongCoBan // LuongThucLanh
             )).ToList();
+
+            // Thêm tường minh (state Added -> INSERT) trước khi gắn vào kỳ lương
+            foreach (var nvtl in nhanVienTinhLuongs)
+            {
+                await nhanVienTinhLuongRepository.AddAsync(nvtl);
+            }
 
             tinhLuongService.TinhLuong(entity, nhanVienTinhLuongs);
             await repository.UpdateAsync(entity, request.UpdatedAt);

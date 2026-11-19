@@ -67,8 +67,21 @@ namespace TinhLuongService.Infrastructure.Repositories
 
         public async Task UpdateAsync(KyTinhLuong entity, DateTime originalUpdatedAt)
         {
-            context.Entry(entity).Property(e => e.UpdatedAt).OriginalValue = originalUpdatedAt;
-            context.KyTinhLuongs.Update(entity);
+            var entry = context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                context.KyTinhLuongs.Update(entity);
+            }
+            else
+            {
+                // Entity đã được tracked (load qua GetByIdAsync): chỉ đánh dấu chính kỳ lương là Modified.
+                // Không gọi Update() vì nó duyệt cả graph và đánh dấu các NhanVienTinhLuong mới
+                // (Id đã sinh sẵn trong constructor) là Modified -> sinh UPDATE thay vì INSERT -> 409.
+                entry.State = EntityState.Modified;
+            }
+
+            // Optimistic concurrency: so với UpdatedAt client đã đọc.
+            entry.Property(e => e.UpdatedAt).OriginalValue = originalUpdatedAt;
             await Task.CompletedTask;
         }
     }
