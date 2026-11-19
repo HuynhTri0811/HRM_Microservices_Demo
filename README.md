@@ -17,6 +17,7 @@ Hệ thống Quản lý Nhân sự (HRM) xây dựng theo kiến trúc **Microse
 - [Xử lý lỗi & Concurrency](#xử-lý-lỗi--concurrency)
 - [Observability](#observability)
 - [Database & Migration](#database--migration)
+- [Unit test](#unit-test)
 
 ---
 
@@ -97,6 +98,7 @@ HRM_Microservices_Demo/
 ├── TinhLuongService/               # Service Tính lương (cùng cấu trúc)
 ├── ChamCongService/                # Service Chấm công (cùng cấu trúc)
 ├── QuyetDinhService/               # Service Quyết định (cùng cấu trúc)
+├── tests/                          # Unit test xUnit cho từng service (xem mục Unit test)
 ├── docker-compose.yml
 ├── init-db.sql                     # Tạo 4 database PostgreSQL
 ├── prometheus.yml                  # Scrape config cho 5 service
@@ -311,7 +313,10 @@ Mỗi service có `ExceptionHandlingMiddleware` trả lỗi theo format thống 
 - **Logging**: Serilog ghi ra Console và MongoDB `HrmLogsDb`, mỗi service một collection (`NhanSuLogs`, `TinhLuongLogs`, `ChamCongLogs`, `QuyetDinhLogs`, `HttpTrafficLogs` cho Gateway). `ResponseLoggingFilter` / `GatewayLoggingMiddleware` log request/response.
 - **Metrics**: mỗi service expose `/metrics` (prometheus-net), Prometheus scrape theo `prometheus.yml`, xem dashboard trên Grafana (thêm data source `http://prometheus:9090`).
 - **Tracing**: OpenTelemetry (ASP.NET Core + HttpClient) export OTLP tới Jaeger (`Otlp:Endpoint`), theo dõi được một request đi từ Gateway qua các service.
-- **Resilience (Gateway)**: Polly pipeline cho YARP — retry 3 lần (exponential backoff + jitter) với lỗi 500/502/503, circuit breaker (tỷ lệ lỗi ≥ 50% trong 10s, tối thiểu 8 request, ngắt 30s), timeout 5s.
+- **Resilience (Gateway)**: mỗi cluster (service) có một Polly pipeline riêng cho YARP:
+  - Retry 3 lần (exponential backoff + jitter), chỉ cho GET/HEAD/OPTIONS/TRACE và chỉ khi lỗi hạ tầng (không kết nối được, 502/503/504). Lỗi 500 do service trả về được chuyển nguyên cho client.
+  - Circuit breaker riêng từng service: tỷ lệ lỗi hạ tầng ≥ 50% trong 10s, tối thiểu 8 request, ngắt 30s.
+  - Timeout 5s.
 
 ## Database & Migration
 
@@ -321,4 +326,36 @@ Tạo migration mới (ví dụ cho QuyetDinhService):
 
 ```bash
 dotnet ef migrations add <TenMigration> --project QuyetDinhService
+```
+
+## Unit test
+
+Mỗi service có một project xUnit trong thư mục `tests/` (đã thêm vào `QuanLyNhanSuSystem.slnx`), dùng Moq để mock repository/client:
+
+| Project | Nội dung chính |
+|---|---|
+| `tests/QuanLyNhanSu.Tests` | Rule domain của nhân viên, chức vụ, phòng ban; `CreateNhanVienHandler` (gán trạng thái "Đang làm việc"); đăng ký/đăng nhập (xác thực JWT bằng đúng tham số các service dùng); gRPC server `NhanSuGrpcService` (map dữ liệu, số thập phân, mã lỗi gRPC); consumer RabbitMQ; `ExceptionHandlingMiddleware` |
+| `tests/QuyetDinhService.Tests` | Domain quyết định; handler bổ nhiệm/nâng lương; **Publish chạy trước SaveChanges** (Outbox); gRPC client tới NhanSu |
+| `tests/ChamCongService.Tests` | Domain bảng công, loại chấm công, phiếu nghỉ; handler tạo phiếu nghỉ theo hình thức; gRPC client |
+| `tests/TinhLuongService.Tests` | Domain kỳ lương; handler tính lương/khoá/mở kỳ chạy với DbContext thật trên SQLite in-memory (kiểm tra INSERT dòng lương, tính lại không trùng, optimistic concurrency); gRPC client |
+| `tests/ApiGateway.Tests` | Polly: không retry POST, 500 không bị đổi thành 502, retry GET khi 503, mỗi cluster có circuit breaker riêng |
+
+Hai project NhanSu và QuyetDinh có `EventContractTests`, kiểm tra class event ở hai phía giữ đúng namespace, tên và thuộc tính để MassTransit khớp được message.
+
+Chạy toàn bộ:
+
+```bash
+dotnet test QuanLyNhanSuSystem.slnx
+```
+
+Chỉ một project hoặc một nhóm test:
+
+```bash
+dotnet test tests/TinhLuongService.Tests --filter "FullyQualifiedName~KyTinhLuongHandlersDbTests"
+```
+
+Các project nhắm tới `net8.0`. Nếu máy chỉ có runtime .NET mới hơn (vd .NET 10), cho phép chạy bằng runtime đó:
+
+```bash
+DOTNET_ROLL_FORWARD=Major dotnet test QuanLyNhanSuSystem.slnx
 ```
