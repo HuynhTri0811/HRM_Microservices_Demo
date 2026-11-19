@@ -42,13 +42,11 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
             entity.BoNhiem(request.MaNhanVien, request.ChucVuCu, request.ChucVuMoi, phuCapCu, phuCapMoi, request.LyDo);
             entity.GhiChu = request.GhiChu;
 
-            await repository.AddAsync(entity);
-            await repository.SaveChangesAsync();
-
             // Tạm thời comment out để sử dụng MassTransit Event-Driven
             // await nhanSuServiceClient.UpdateBoNhiemAsync(request.MaNhanVien, request.ChucVuMoi, phuCapMoi, token);
 
-            // Publish integration event to RabbitMQ
+            // Publish TRƯỚC khi SaveChanges: với MassTransit EF Outbox (UseBusOutbox), Publish chỉ thêm
+            // OutboxMessage vào DbContext; SaveChanges kế tiếp ghi entity + message trong cùng một transaction.
             await publishEndpoint.Publish(new QuyetDinhBoNhiemCreatedEvent
             {
                 Id = entity.Id,
@@ -60,6 +58,9 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
                 PhuCapCu = entity.PhuCapCu,
                 PhuCapMoi = entity.PhuCapMoi
             }, cancellationToken);
+
+            await repository.AddAsync(entity);
+            await repository.SaveChangesAsync();
 
             return entity.Id;
         }
@@ -93,13 +94,11 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
 
             entity.BoNhiem(entity.MaNhanVien, entity.ChucVuCu, request.ChucVuMoi, entity.PhuCapCu, phuCapMoi, request.LyDo);
 
-            await repository.UpdateAsync(entity, request.UpdatedAt);
-            await repository.SaveChangesAsync();
-
             // Comment out to use MassTransit Event-Driven / Outbox Pattern
             // await nhanSuServiceClient.UpdateBoNhiemAsync(entity.MaNhanVien, request.ChucVuMoi, phuCapMoi, token);
 
-            // Publish integration event to RabbitMQ
+            // Publish TRƯỚC khi SaveChanges: với MassTransit EF Outbox (UseBusOutbox), Publish chỉ thêm
+            // OutboxMessage vào DbContext; SaveChanges kế tiếp ghi entity + message trong cùng một transaction.
             await publishEndpoint.Publish(new QuyetDinhBoNhiemUpdatedEvent
             {
                 Id = entity.Id,
@@ -111,6 +110,9 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
                 PhuCapCu = entity.PhuCapCu,
                 PhuCapMoi = entity.PhuCapMoi
             }, cancellationToken);
+
+            await repository.UpdateAsync(entity, request.UpdatedAt);
+            await repository.SaveChangesAsync();
 
             return true;
         }
@@ -128,20 +130,21 @@ namespace QuyetDinhService.QuyetDinhService.Application.Handlers.QuyetDinhBoNhie
             var entity = await repository.GetByIdAsync(request.Id);
             if (entity == null) throw new NotFoundException("Không tìm thấy quyết định bổ nhiệm trong hệ thống", "NOT_FOUND");
 
-            await repository.DeleteAsync(request.Id);
-            await repository.SaveChangesAsync();
-
             var token = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString() ?? string.Empty;
             // Khôi phục lại chức vụ cũ và phụ cấp cũ - comment out to use RabbitMQ
             // await nhanSuServiceClient.UpdateBoNhiemAsync(entity.MaNhanVien, entity.ChucVuCu, entity.PhuCapCu, token);
 
-            // Publish integration event to RabbitMQ
+            // Publish TRƯỚC khi SaveChanges: với MassTransit EF Outbox (UseBusOutbox), Publish chỉ thêm
+            // OutboxMessage vào DbContext; SaveChanges kế tiếp ghi entity + message trong cùng một transaction.
             await publishEndpoint.Publish(new QuyetDinhBoNhiemDeletedEvent
             {
                 MaNhanVien = entity.MaNhanVien,
                 ChucVuCu = entity.ChucVuCu,
                 PhuCapCu = entity.PhuCapCu
             }, cancellationToken);
+
+            await repository.DeleteAsync(request.Id);
+            await repository.SaveChangesAsync();
 
             return true;
         }

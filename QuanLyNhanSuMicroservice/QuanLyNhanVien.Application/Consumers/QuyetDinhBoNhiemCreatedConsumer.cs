@@ -1,6 +1,6 @@
 using MassTransit;
 using MediatR;
-using QuanLyNhanSuMicroservice.QuyetDinhService.Application.Events;
+using QuyetDinhService.QuyetDinhService.Application.Events;
 using QuanLyNhanSuMicroservice.QuanLyNhanVien.Application.Command.NhanSu;
 using System.Threading.Tasks;
 
